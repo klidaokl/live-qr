@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>康比特活码管理</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .fade-in { animation: fadeIn 0.3s ease-in; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .toast { animation: slideIn 0.3s ease, fadeOut 0.3s ease 2.7s; }
+    @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+    @keyframes fadeOut { to { opacity: 0; } }
+    .modal-bg { background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+  <!-- 顶部导航 -->
+  <nav class="bg-white border-b border-gray-200 px-6 py-4">
+    <div class="max-w-5xl mx-auto flex items-center justify-between">
+      <h1 class="text-xl font-bold text-gray-800">康比特活码管理</h1>
+      <button onclick="showLogin()" id="loginBtn" class="px-4 py-2 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600 transition">登录</button>
+      <div id="userInfo" class="hidden flex items-center gap-3">
+        <span class="text-sm text-gray-500">已登录</span>
+        <button onclick="logout()" class="text-sm text-gray-400 hover:text-gray-600">退出</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- 未登录状态 -->
+  <div id="loginPanel" class="max-w-md mx-auto mt-20 fade-in">
+    <div class="bg-white rounded-xl shadow-sm p-8">
+      <h2 class="text-lg font-semibold text-gray-700 mb-6 text-center">管理后台登录</h2>
+      <input id="passwordInput" type="password" placeholder="请输入管理密码"
+        class="w-full border border-gray-300 rounded-lg px-4 py-3 mb-4 focus:outline-none focus:ring-2 focus:ring-red-400"
+        onkeydown="if(event.key==='Enter')doLogin()">
+      <button onclick="doLogin()" class="w-full bg-red-500 text-white py-3 rounded-lg hover:bg-red-600 transition font-medium">登 录</button>
+    </div>
+  </div>
+
+  <!-- 主内容区（登录后可见） -->
+  <div id="mainContent" class="hidden max-w-5xl mx-auto px-6 py-6 fade-in">
+
+    <!-- 操作栏 -->
+    <div class="flex items-center justify-between mb-6">
+      <p class="text-gray-500 text-sm" id="baseUrl"></p>
+      <button onclick="showCreateModal()" class="px-5 py-2.5 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600 transition font-medium">+ 新建活码</button>
+    </div>
+
+    <!-- 活码列表 -->
+    <div id="codeList" class="space-y-3"></div>
+
+    <!-- 空状态 -->
+    <div id="emptyState" class="hidden text-center py-20">
+      <div class="text-gray-300 text-6xl mb-4">📦</div>
+      <p class="text-gray-400">还没有活码，点击上方按钮创建</p>
+    </div>
+  </div>
+
+  <!-- 创建/编辑弹窗 -->
+  <div id="modal" class="hidden fixed inset-0 z-50 modal-bg flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6 fade-in">
+      <h3 id="modalTitle" class="text-lg font-semibold text-gray-700 mb-4">新建活码</h3>
+      <input type="hidden" id="editId">
+      <div class="mb-4">
+        <label class="block text-sm text-gray-500 mb-1">活码名称</label>
+        <input id="inputName" type="text" placeholder="如：5月蛋白粉主推"
+          class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-red-400">
+      </div>
+      <div class="mb-4" id="codeField">
+        <label class="block text-sm text-gray-500 mb-1">短码（可选，留空自动生成）</label>
+        <input id="inputCode" type="text" placeholder="如：may2025"
+          class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-red-400">
+      </div>
+      <div class="mb-6">
+        <label class="block text-sm text-gray-500 mb-1">跳转目标URL</label>
+        <input id="inputUrl" type="url" placeholder="https://item.jd.com/100012345.html"
+          class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-red-400">
+      </div>
+      <div class="flex gap-3">
+        <button onclick="closeModal()" class="flex-1 py-2.5 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 transition">取消</button>
+        <button onclick="saveCode()" class="flex-1 py-2.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition font-medium">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 统计弹窗 -->
+  <div id="statsModal" class="hidden fixed inset-0 z-50 modal-bg flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[80vh] overflow-y-auto p-6 fade-in">
+      <div class="flex items-center justify-between mb-4">
+        <h3 id="statsTitle" class="text-lg font-semibold text-gray-700">扫码统计</h3>
+        <button onclick="closeStats()" class="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+      </div>
+      <div id="statsContent"></div>
+    </div>
+  </div>
+
+  <!-- Toast容器 -->
+  <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+<script>
+const API = '/admin/api/codes';
+let token = localStorage.getItem('liveqr_token') || '';
+
+// 初始化
+document.addEventListener('DOMContentLoaded', () => {
+  if (token) {
+    document.getElementById('loginPanel').classList.add('hidden');
+    document.getElementById('mainContent').classList.remove('hidden');
+    document.getElementById('loginBtn').classList.add('hidden');
+    document.getElementById('userInfo').classList.remove('hidden');
+    loadCodes();
+  }
+  // 显示baseUrl
+  document.getElementById('baseUrl').textContent = `访问地址：${location.origin}/`;
+});
+
+// ========== 登录 ==========
+function showLogin() {
+  document.getElementById('passwordInput').focus();
+}
+
+function doLogin() {
+  const pwd = document.getElementById('passwordInput').value;
+  if (!pwd) return;
+  // 验证密码（简单方式：用密码去请求一次API验证）
+  fetch('/admin/api/codes', {
+    headers: { 'Authorization': `Bearer ${pwd}` }
+  })
+  .then(r => {
+    if (r.ok) {
+      token = pwd;
+      localStorage.setItem('liveqr_token', pwd);
+      document.getElementById('loginPanel').classList.add('hidden');
+      document.getElementById('mainContent').classList.remove('hidden');
+      document.getElementById('loginBtn').classList.add('hidden');
+      document.getElementById('userInfo').classList.remove('hidden');
+      loadCodes();
+    } else {
+      toast('密码错误', 'error');
+    }
+  });
+}
+
+function logout() {
+  token = '';
+  localStorage.removeItem('liveqr_token');
+  document.getElementById('loginPanel').classList.remove('hidden');
+  document.getElementById('mainContent').classList.add('hidden');
+  document.getElementById('loginBtn').classList.remove('hidden');
+  document.getElementById('userInfo').classList.add('hidden');
+  document.getElementById('passwordInput').value = '';
+}
+
+// ========== 活码列表 ==========
+function loadCodes() {
+  fetch(API, { headers: auth() })
+    .then(r => r.json())
+    .then(codes => {
+      const list = document.getElementById('codeList');
+      const empty = document.getElementById('emptyState');
+      if (codes.length === 0) {
+        list.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+      }
+      empty.classList.add('hidden');
+      list.innerHTML = codes.map(c => `
+        <div class="bg-white rounded-xl shadow-sm p-5 fade-in hover:shadow-md transition">
+          <div class="flex items-start justify-between">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-1">
+                <h3 class="font-semibold text-gray-800 truncate">${esc(c.name)}</h3>
+                <span class="text-xs bg-red-50 text-red-500 px-2 py-0.5 rounded-full">${c.scan_count} 次扫码</span>
+              </div>
+              <p class="text-sm text-gray-400 mb-1">短码：${esc(c.code)}</p>
+              <p class="text-sm text-blue-500 truncate">${esc(c.url)}</p>
+              <p class="text-xs text-gray-300 mt-1">${c.created_at}</p>
+            </div>
+            <div class="flex items-center gap-2 ml-4">
+              <button onclick="showStats(${c.id}, '${esc(c.name)}')" class="px-3 py-1.5 text-xs border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 transition">统计</button>
+              <button onclick="downloadQR(${c.id}, '${esc(c.code)}')" class="px-3 py-1.5 text-xs border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 transition">下载码</button>
+              <button onclick="showEditModal(${c.id}, '${esc(c.name)}', '${esc(c.url)}')" class="px-3 py-1.5 text-xs border border-blue-200 rounded-lg text-blue-500 hover:bg-blue-50 transition">编辑</button>
+              <button onclick="doDelete(${c.id}, '${esc(c.name)}')" class="px-3 py-1.5 text-xs border border-red-200 rounded-lg text-red-400 hover:bg-red-50 transition">删除</button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    })
+    .catch(e => {
+      if (e.status === 401) logout();
+    });
+}
+
+// ========== CRUD ==========
+function showCreateModal() {
+  document.getElementById('modalTitle').textContent = '新建活码';
+  document.getElementById('editId').value = '';
+  document.getElementById('inputName').value = '';
+  document.getElementById('inputCode').value = '';
+  document.getElementById('inputUrl').value = '';
+  document.getElementById('codeField').classList.remove('hidden');
+  document.getElementById('modal').classList.remove('hidden');
+}
+
+function showEditModal(id, name, url) {
+  document.getElementById('modalTitle').textContent = '编辑活码';
+  document.getElementById('editId').value = id;
+  document.getElementById('inputName').value = name;
+  document.getElementById('inputCode').value = '';
+  document.getElementById('inputUrl').value = url;
+  document.getElementById('codeField').classList.add('hidden');
+  document.getElementById('modal').classList.remove('hidden');
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.add('hidden');
+}
+
+function saveCode() {
+  const id = document.getElementById('editId').value;
+  const name = document.getElementById('inputName').value.trim();
+  const code = document.getElementById('inputCode').value.trim();
+  const url = document.getElementById('inputUrl').value.trim();
+  if (!name || !url) { toast('请填写名称和URL', 'error'); return; }
+
+  const isEdit = !!id;
+  const body = { name, url };
+  if (!isEdit && code) body.code = code;
+
+  const opts = {
+    method: isEdit ? 'PUT' : 'POST',
+    headers: { ...auth(), 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  };
+
+  fetch(isEdit ? `${API}/${id}` : API, opts)
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) { toast(data.error, 'error'); return; }
+      toast(isEdit ? '已更新' : '创建成功');
+      closeModal();
+      loadCodes();
+    });
+}
+
+function doDelete(id, name) {
+  if (!confirm(`确认删除「${name}」？删除后不可恢复。`)) return;
+  fetch(`${API}/${id}`, { method: 'DELETE', headers: auth() })
+    .then(() => { toast('已删除'); loadCodes(); });
+}
+
+// ========== 二维码下载 ==========
+function downloadQR(id, code) {
+  fetch(`/admin/api/codes/${id}/qrcode?format=png&size=600`, { headers: auth() })
+    .then(r => r.blob())
+    .then(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${code}.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast('二维码已下载');
+    });
+}
+
+// ========== 统计 ==========
+let chartInstance = null;
+
+function showStats(id, name) {
+  document.getElementById('statsTitle').textContent = `${name} - 扫码统计`;
+  document.getElementById('statsContent').innerHTML = '<p class="text-gray-400 text-center py-8">加载中...</p>';
+  document.getElementById('statsModal').classList.remove('hidden');
+
+  fetch(`${API}/${id}/stats?days=30`, { headers: auth() })
+    .then(r => r.json())
+    .then(stats => {
+      const sourceMap = { wechat: '微信', browser: '浏览器', alipay: '支付宝', dingtalk: '钉钉', weibo: '微博', other: '其他' };
+      const sourceLabels = stats.sources.map(s => sourceMap[s.source] || s.source);
+      const sourceValues = stats.sources.map(s => s.count);
+
+      document.getElementById('statsContent').innerHTML = `
+        <div class="grid grid-cols-2 gap-4 mb-6">
+          <div class="bg-gray-50 rounded-lg p-4 text-center">
+            <p class="text-3xl font-bold text-red-500">${stats.total}</p>
+            <p class="text-xs text-gray-400 mt-1">总扫码次数</p>
+          </div>
+          <div class="bg-gray-50 rounded-lg p-4 text-center">
+            <p class="text-3xl font-bold text-blue-500">${stats.uv}</p>
+            <p class="text-xs text-gray-400 mt-1">独立访客(UV)</p>
+          </div>
+        </div>
+        <div class="mb-4">
+          <h4 class="text-sm font-medium text-gray-600 mb-3">近30天趋势</h4>
+          <canvas id="trendChart" height="180"></canvas>
+        </div>
+        <div>
+          <h4 class="text-sm font-medium text-gray-600 mb-3">来源分布</h4>
+          <canvas id="sourceChart" height="160"></canvas>
+        </div>
+      `;
+
+      // 趋势图
+      const ctx1 = document.getElementById('trendChart').getContext('2d');
+      new Chart(ctx1, {
+        type: 'line',
+        data: {
+          labels: stats.daily.map(d => d.date.slice(5)),
+          datasets: [{
+            label: '扫码次数',
+            data: stats.daily.map(d => d.count),
+            borderColor: '#ef4444',
+            backgroundColor: 'rgba(239,68,68,0.1)',
+            fill: true,
+            tension: 0.3
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+        }
+      });
+
+      // 来源饼图
+      if (sourceValues.length > 0) {
+        const ctx2 = document.getElementById('sourceChart').getContext('2d');
+        new Chart(ctx2, {
+          type: 'doughnut',
+          data: {
+            labels: sourceLabels,
+            datasets: [{
+              data: sourceValues,
+              backgroundColor: ['#ef4444', '#3b82f6', '#f59e0b', '#10b981', '#8b5cf6', '#6b7280']
+            }]
+          },
+          options: { responsive: true }
+        });
+      }
+    });
+}
+
+function closeStats() {
+  document.getElementById('statsModal').classList.add('hidden');
+}
+
+// ========== 工具函数 ==========
+function auth() {
+  return { 'Authorization': `Bearer ${token}` };
+}
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML.replace(/'/g, "\\'");
+}
+
+function toast(msg, type = 'success') {
+  const el = document.createElement('div');
+  el.className = `toast px-4 py-3 rounded-lg shadow-lg text-sm text-white ${type === 'error' ? 'bg-red-500' : 'bg-green-500'}`;
+  el.textContent = msg;
+  document.getElementById('toastContainer').appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+// 点击弹窗外关闭
+document.getElementById('modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
+document.getElementById('statsModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeStats(); });
+</script>
+
+</body>
+</html>
