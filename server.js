@@ -137,3 +137,8 @@ app.listen(PORT, () => {
   console.log(`活码系统已启动: http://localhost:${PORT}`);
   console.log(`管理后台: http://localhost:${PORT}/admin`);
 });
+
+process.on('uncaughtException', (err) => {
+  console.error('未捕获异常:', err.message);
+  process.exit(1);
+});
