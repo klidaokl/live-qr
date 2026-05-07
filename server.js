@@ -164,14 +164,16 @@ app.get('/:code', async (req, res) => {
 
 // ========== 启动 ==========
 
-db.init().then(() => {
-  app.listen(PORT, () => {
-    console.log(`活码系统已启动: http://localhost:${PORT}`);
-    console.log(`管理后台: http://localhost:${PORT}/admin`);
-  });
-}).catch(err => {
+// 立即监听端口（Railway要求快速响应），db异步初始化
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`活码系统已启动: http://0.0.0.0:${PORT}`);
+  console.log(`管理后台: http://0.0.0.0:${PORT}/admin`);
+});
+
+// 异步初始化数据库
+db.init().catch(err => {
   console.error('数据库初始化失败:', err.message);
-  process.exit(1);
+  if (DATABASE_URL) process.exit(1); // 有PG连接串时初始化失败才退出
 });
 
 process.on('uncaughtException', (err) => {
