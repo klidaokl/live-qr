@@ -600,10 +600,14 @@
       var style = s.join(';');
 
       var imgHtml = '<img src="' + escAttr(mod.src) + '" alt="" style="' + style + '" loading="lazy">';
+      var dataAttrs = 'data-module-name="' + escAttr(mod.name || '') + '" data-tao-code="' + escAttr(mod.taoCode || '') + '"';
       if (mod.link) {
-        // 把模块数据存到 data 属性中，供点击拦截使用
-        var dataAttrs = 'data-module-name="' + escAttr(mod.name || '') + '" data-tao-code="' + escAttr(mod.taoCode || '') + '"';
+        // 有链接：渲染成 <a> 标签
         return '<div class="mod-image" ' + dataAttrs + '><a href="' + escAttr(mod.link) + '" target="_blank" rel="noopener">' + imgHtml + '</a></div>';
+      }
+      // 无链接但有淘口令：也渲染成可点击的 <a>，href 用 # 占位
+      if (mod.taoCode) {
+        return '<div class="mod-image" ' + dataAttrs + '><a href="#" onclick="return false;" style="display:block;cursor:pointer;">' + imgHtml + '</a></div>';
       }
       return '<div class="mod-image">' + imgHtml + '</div>';
     }
