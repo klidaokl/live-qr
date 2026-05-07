@@ -1,114 +1,107 @@
-const Database = require('better-sqlite3');
-const path = require('path');
-const fs = require('fs');
+/**
+ * 内存数据库 —— 不依赖文件系统，完美兼容 Railway 等临时文件系统环境
+ * 重启后数据清空（适合活码系统，数据量小，可接受）
+ */
 
-const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'data', 'liveqr.db');
-
-// 确保data目录存在
-const dataDir = path.dirname(DB_PATH);
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
-}
-
-const db = new Database(DB_PATH);
-
-// 开启WAL模式提升并发性能
-db.pragma('journal_mode = WAL');
-
-// 建表
-db.exec(`
-  CREATE TABLE IF NOT EXISTS codes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    code TEXT UNIQUE NOT NULL,
-    url TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS scans (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    code_id INTEGER NOT NULL,
-    ip TEXT DEFAULT '',
-    ua TEXT DEFAULT '',
-    source TEXT DEFAULT '',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (code_id) REFERENCES codes(id) ON DELETE CASCADE
-  );
-
-  CREATE INDEX IF NOT EXISTS idx_scans_code_id ON scans(code_id);
-  CREATE INDEX IF NOT EXISTS idx_scans_created_at ON scans(created_at);
-`);
+let nextId = 1;
+const codes = new Map(); // id -> { id, name, code, url, created_at }
+const scans = [];        // [{ id, code_id, ip, ua, source, created_at }]
 
 // ========== 活码 CRUD ==========
 
 function getAllCodes() {
-  const rows = db.prepare(`
-    SELECT c.*, COUNT(s.id) as scan_count
-    FROM codes c
-    LEFT JOIN scans s ON s.code_id = c.id
-    GROUP BY c.id
-    ORDER BY c.created_at DESC
-  `).all();
+  const rows = [];
+  for (const c of codes.values()) {
+    const scanCount = scans.filter(s => s.code_id === c.id).length;
+    rows.push({ ...c, scan_count: scanCount });
+  }
+  rows.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
   return rows;
 }
 
 function getCodeById(id) {
-  return db.prepare('SELECT * FROM codes WHERE id = ?').get(id);
+  return codes.get(id) || null;
 }
 
 function getCodeByCode(code) {
-  return db.prepare('SELECT * FROM codes WHERE code = ?').get(code);
+  for (const c of codes.values()) {
+    if (c.code === code) return c;
+  }
+  return null;
 }
 
 function createCode(name, code, url) {
-  const result = db.prepare('INSERT INTO codes (name, code, url) VALUES (?, ?, ?)').run(name, code, url);
-  return result.lastInsertRowid;
+  // 检查短码唯一性
+  if (getCodeByCode(code)) {
+    const err = new Error('UNIQUE constraint failed');
+    err.message = 'UNIQUE constraint failed: codes.code';
+    throw err;
+  }
+  const id = nextId++;
+  const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
+  codes.set(id, { id, name, code, url, created_at: now });
+  return id;
 }
 
 function updateCode(id, name, url) {
-  return db.prepare('UPDATE codes SET name = ?, url = ? WHERE id = ?').run(name, url, id);
+  const c = codes.get(id);
+  if (!c) return { changes: 0 };
+  c.name = name;
+  c.url = url;
+  return { changes: 1 };
 }
 
 function deleteCode(id) {
-  db.prepare('DELETE FROM scans WHERE code_id = ?').run(id);
-  return db.prepare('DELETE FROM codes WHERE id = ?').run(id);
+  if (!codes.has(id)) return;
+  codes.delete(id);
+  // 删除关联扫码记录
+  for (let i = scans.length - 1; i >= 0; i--) {
+    if (scans[i].code_id === id) scans.splice(i, 1);
+  }
 }
 
 // ========== 扫码记录 ==========
 
 function recordScan(codeId, ip, ua, source) {
-  db.prepare(
-    'INSERT INTO scans (code_id, ip, ua, source) VALUES (?, ?, ?, ?)'
-  ).run(codeId, ip, ua, source);
+  const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
+  scans.push({ id: scans.length + 1, code_id: codeId, ip, ua, source, created_at: now });
 }
 
 // ========== 统计查询 ==========
 
 function getCodeStats(codeId, days = 30) {
-  // 总扫码 / UV
-  const total = db.prepare(`
-    SELECT COUNT(*) as total, COUNT(DISTINCT ip) as uv
-    FROM scans WHERE code_id = ?
-  `).get(codeId);
+  const filtered = scans.filter(s => s.code_id === codeId);
+  const total = filtered.length;
+  const uv = new Set(filtered.map(s => s.ip)).size;
 
   // 按天趋势
-  const daily = db.prepare(`
-    SELECT DATE(created_at) as date, COUNT(*) as count, COUNT(DISTINCT ip) as uv
-    FROM scans
-    WHERE code_id = ? AND created_at >= DATE('now', '-' || ? || ' days')
-    GROUP BY DATE(created_at)
-    ORDER BY date
-  `).all(codeId, days);
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - days);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+
+  const dailyMap = {};
+  for (const s of filtered) {
+    const date = s.created_at.slice(0, 10);
+    if (date >= cutoffStr) {
+      if (!dailyMap[date]) dailyMap[date] = { count: 0, uvSet: new Set() };
+      dailyMap[date].count++;
+      dailyMap[date].uvSet.add(s.ip);
+    }
+  }
+  const daily = Object.keys(dailyMap).sort().map(date => ({
+    date,
+    count: dailyMap[date].count,
+    uv: dailyMap[date].uvSet.size
+  }));
 
   // 来源分布
-  const sources = db.prepare(`
-    SELECT source, COUNT(*) as count
-    FROM scans
-    WHERE code_id = ?
-    GROUP BY source
-  `).all(codeId);
+  const sourceMap = {};
+  for (const s of filtered) {
+    sourceMap[s.source] = (sourceMap[s.source] || 0) + 1;
+  }
+  const sources = Object.entries(sourceMap).map(([source, count]) => ({ source, count }));
 
-  return { total: total.total, uv: total.uv, daily, sources };
+  return { total, uv, daily, sources };
 }
 
 module.exports = {

@@ -96,6 +96,11 @@ app.get('/admin/api/codes/:id/qrcode', checkAuth, async (req, res) => {
   }
 });
 
+// 健康检查
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', uptime: process.uptime() });
+});
+
 // ========== 核心功能：短码重定向 ==========
 
 function parseSource(ua) {
@@ -108,11 +113,17 @@ function parseSource(ua) {
   return 'browser';
 }
 
+// admin页面
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// 短码重定向
 app.get('/:code', (req, res) => {
   const { code } = req.params;
 
-  // 排除静态资源和API路径
-  if (['admin', 'favicon.ico'].includes(code)) {
+  // 排除静态资源路径
+  if (['favicon.ico'].includes(code)) {
     return res.status(404).send('Not Found');
   }
 
