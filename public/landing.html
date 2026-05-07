@@ -367,8 +367,14 @@
     // ========== 环境检测 ==========
     var isWechat = /MicroMessenger/i.test(navigator.userAgent);
 
-    // 淘系域名（走淘口令流程）
-    var taobaoDomains = ['tmall.com', 'taobao.com'];
+    // 淘系域名（走淘口令流程）— 包括官方短域名
+    var taobaoDomains = [
+      'tmall.com', 'taobao.com',
+      'tb.cn', 'e.tb.cn', 'm.tb.cn',
+      '3.cn', 'a.m.taobao.com',
+      's.click.taobao.com',
+      'uland.taobao.com'
+    ];
 
     // 其他被屏蔽域名（走浏览器引导流程）
     var otherBlockedDomains = [
@@ -498,22 +504,35 @@
       var a = e.target.closest('a');
       if (!a) return;
       var href = a.getAttribute('href');
-      var linkType = isWechat ? getLinkType(href) : null;
 
-      if (linkType === 'taobao') {
-        e.preventDefault();
-        e.stopPropagation();
-        // 获取模块数据
-        var modEl = a.closest('[data-tao-code]');
-        var mod = modEl ? {
-          name: modEl.getAttribute('data-module-name') || '',
-          taoCode: modEl.getAttribute('data-tao-code') || ''
-        } : null;
-        showTaoModal(href, mod);
-      } else if (linkType === 'other') {
-        e.preventDefault();
-        e.stopPropagation();
-        showBrowserGuide(href);
+      // 获取模块数据（data属性在渲染时已挂载）
+      var modEl = a.closest('[data-tao-code]');
+      var mod = modEl ? {
+        name: modEl.getAttribute('data-module-name') || '',
+        taoCode: modEl.getAttribute('data-tao-code') || ''
+      } : null;
+
+      // 微信内：淘系域名 → 淘口令弹窗
+      if (isWechat) {
+        var linkType = getLinkType(href);
+        if (linkType === 'taobao') {
+          e.preventDefault();
+          e.stopPropagation();
+          showTaoModal(href, mod);
+          return;
+        } else if (linkType === 'other') {
+          e.preventDefault();
+          e.stopPropagation();
+          showBrowserGuide(href);
+          return;
+        }
+        // 模块配置了自定义淘口令 → 也弹淘口令
+        if (mod && mod.taoCode) {
+          e.preventDefault();
+          e.stopPropagation();
+          showTaoModal(href, mod);
+          return;
+        }
       }
     }, true);
 
