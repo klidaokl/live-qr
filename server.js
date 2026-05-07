@@ -97,6 +97,26 @@ app.put('/admin/api/codes/:id', checkAuth, async (req, res) => {
   }
 });
 
+// 复制活码
+app.post('/admin/api/codes/:id/duplicate', checkAuth, async (req, res) => {
+  try {
+    const original = await db.getCodeById(Number(req.params.id));
+    if (!original) {
+      return res.status(404).json({ error: '活码不存在' });
+    }
+    const { nanoid } = require('nanoid');
+    const newCode = nanoid(6);
+    const newName = original.name + ' (副本)';
+    const newId = await db.createCode(
+      newName, newCode, original.url || '', original.mode || 'redirect',
+      original.landing_config || null
+    );
+    res.json({ id: newId, code: newCode, name: newName });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // 删除活码
 app.delete('/admin/api/codes/:id', checkAuth, async (req, res) => {
   try {

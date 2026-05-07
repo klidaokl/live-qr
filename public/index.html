@@ -250,6 +250,24 @@
     </div>
   </div>
 
+  <!-- 二维码预览弹窗 -->
+  <div id="qrPreviewModal" class="hidden fixed inset-0 z-50 modal-bg flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-sm p-6 fade-in text-center">
+      <div class="flex items-center justify-between mb-4">
+        <h3 id="qrPreviewTitle" class="text-lg font-semibold text-gray-700">二维码预览</h3>
+        <button onclick="closeQRPreview()" class="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+      </div>
+      <div class="bg-white p-4 rounded-lg inline-block mb-4">
+        <img id="qrPreviewImg" src="" alt="二维码" class="w-56 h-56 mx-auto">
+      </div>
+      <p id="qrPreviewUrl" class="text-sm text-gray-400 break-all mb-3"></p>
+      <div class="flex gap-3 justify-center">
+        <button onclick="downloadQRFromPreview()" class="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600 transition">下载二维码</button>
+        <button onclick="copyQRLink()" class="px-4 py-2 border border-gray-200 rounded-lg text-gray-600 text-sm hover:bg-gray-50 transition">复制链接</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast容器 -->
   <div id="toastContainer" class="fixed top-4 right-4 z-[70] space-y-2"></div>
 
@@ -340,7 +358,9 @@ function loadCodes() {
                 <p class="text-xs text-gray-300 mt-1">${c.created_at}</p>
               </div>
               <div class="flex items-center gap-2 ml-4 flex-shrink-0">
+                <button onclick="showQRPreview(${c.id}, '${esc(c.name)}', '${esc(c.code)}')" class="px-3 py-1.5 text-xs border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 transition">预览码</button>
                 <button onclick="showStats(${c.id}, '${esc(c.name)}')" class="px-3 py-1.5 text-xs border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 transition">统计</button>
+                <button onclick="duplicateCode(${c.id})" class="px-3 py-1.5 text-xs border border-green-200 rounded-lg text-green-500 hover:bg-green-50 transition">复制</button>
                 <button onclick="downloadQR(${c.id}, '${esc(c.code)}')" class="px-3 py-1.5 text-xs border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 transition">下载码</button>
                 <button onclick="showEditModal(${c.id})" class="px-3 py-1.5 text-xs border border-blue-200 rounded-lg text-blue-500 hover:bg-blue-50 transition">编辑</button>
                 <button onclick="doDelete(${c.id}, '${esc(c.name)}')" class="px-3 py-1.5 text-xs border border-red-200 rounded-lg text-red-400 hover:bg-red-50 transition">删除</button>
@@ -535,6 +555,64 @@ function showStats(id, name) {
         });
       }
     });
+}
+
+// ========== 复制活码 ==========
+function duplicateCode(id) {
+  if (!confirm('确认复制该活码？将创建一个包含相同配置的新活码。')) return;
+  fetch(`${API}/${id}/duplicate`, {
+    method: 'POST',
+    headers: auth()
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) { toast(data.error, 'error'); return; }
+      toast('复制成功：' + data.name);
+      loadCodes();
+    })
+    .catch(e => toast('复制失败', 'error'));
+}
+
+// ========== 二维码预览 ==========
+let qrPreviewCodeId = null;
+let qrPreviewCode = '';
+
+function showQRPreview(id, name, code) {
+  qrPreviewCodeId = id;
+  qrPreviewCode = code;
+  document.getElementById('qrPreviewTitle').textContent = name + ' - 二维码';
+  const baseUrl = location.origin;
+  const fullUrl = baseUrl + '/' + code;
+  document.getElementById('qrPreviewUrl').textContent = fullUrl;
+  document.getElementById('qrPreviewImg').src = `/admin/api/codes/${id}/qrcode?format=png&size=400&t=${Date.now()}`;
+  document.getElementById('qrPreviewModal').classList.remove('hidden');
+}
+
+function closeQRPreview() {
+  document.getElementById('qrPreviewModal').classList.add('hidden');
+}
+
+function downloadQRFromPreview() {
+  if (qrPreviewCodeId) {
+    downloadQR(qrPreviewCodeId, qrPreviewCode);
+  }
+}
+
+function copyQRLink() {
+  const baseUrl = location.origin;
+  const fullUrl = baseUrl + '/' + qrPreviewCode;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(fullUrl).then(() => toast('链接已复制'));
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = fullUrl;
+    ta.style.cssText = 'position:fixed;left:-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    toast('链接已复制');
+  }
 }
 
 function closeStats() { document.getElementById('statsModal').classList.add('hidden'); }
@@ -881,6 +959,7 @@ function toast(msg, type = 'success') {
 // 点击弹窗外关闭
 document.getElementById('modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
 document.getElementById('statsModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeStats(); });
+document.getElementById('qrPreviewModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeQRPreview(); });
 </script>
 
 </body>
