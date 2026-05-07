@@ -172,6 +172,7 @@ app.get('/api/landing/:code', async (req, res) => {
     if (!record || record.mode !== 'landing' || !record.landing_config) {
       return res.status(404).json({ error: 'not found' });
     }
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
     res.json(record.landing_config);
   } catch (e) {
     res.status(500).json({ error: 'server error' });
@@ -216,7 +217,10 @@ app.get('/:code', async (req, res) => {
 
     // 根据模式决定行为
     if (record.mode === 'landing' && record.landing_config) {
-      // H5 落地页模式 — 渲染 landing.html 模板
+      // H5 落地页模式 — 渲染 landing.html 模板，禁止缓存
+      res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.set('Pragma', 'no-cache');
+      res.set('Expires', '0');
       res.sendFile(path.join(__dirname, 'public', 'landing.html'));
       return;
     }
