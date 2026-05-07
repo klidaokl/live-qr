@@ -234,6 +234,21 @@ app.get('/:code', async (req, res) => {
 
 // ========== 启动 ==========
 
+// 数据库初始化完成标志 — 未就绪时返回 503
+let dbReady = false;
+
+// 短码访问前检查数据库就绪状态
+app.use('/:code', async (req, res, next) => {
+  // 排除静态资源和管理路径
+  const code = req.params.code;
+  if (['favicon.ico', 'admin', 'health', 'uploads', 'api'].includes(code)) return next();
+
+  if (!dbReady) {
+    return res.status(503).send('<html><body style="text-align:center;padding:80px 20px;color:#999"><p style="font-size:48px;margin-bottom:16px">⏳</p><p>系统启动中，请稍后刷新</p></body></html>');
+  }
+  next();
+});
+
 // 立即监听端口（Railway要求快速响应），db异步初始化
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`活码系统已启动: http://0.0.0.0:${PORT}`);
@@ -241,7 +256,10 @@ app.listen(PORT, '0.0.0.0', () => {
 });
 
 // 异步初始化数据库
-db.init().catch(err => {
+db.init().then(() => {
+  dbReady = true;
+  console.log('✅ 数据库已就绪，开始接收请求');
+}).catch(err => {
   console.error('数据库初始化失败:', err.message);
   if (process.env.DATABASE_URL) process.exit(1); // 有PG连接串时初始化失败才退出
 });
