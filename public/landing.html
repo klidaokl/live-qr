@@ -108,18 +108,141 @@
     #error-page h2 { font-size: 18px; color: #666; margin-bottom: 8px; }
     #error-page p { font-size: 14px; }
 
-    /* 微信引导遮罩 */
-    #wechat-guide {
+    /* 通用遮罩层 */
+    .guide-overlay {
       display: none;
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(0,0,0,0.85);
       z-index: 9999;
       color: #fff;
-      padding: 40px 30px;
       text-align: center;
     }
-    #wechat-guide .arrow {
+
+    /* ====== 淘口令弹窗 ====== */
+    #tao-modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      z-index: 10000;
+      color: #fff;
+    }
+    #tao-modal .tao-backdrop {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.6);
+    }
+    #tao-modal .tao-card {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #fff;
+      color: #333;
+      border-radius: 16px 16px 0 0;
+      padding: 24px 20px 32px;
+      max-width: 750px;
+      margin: 0 auto;
+      animation: slideUp 0.3s ease;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+    #tao-modal .tao-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    #tao-modal .tao-card-header h3 {
+      font-size: 17px;
+      font-weight: 600;
+      color: #333;
+    }
+    #tao-modal .tao-close {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #f0f0f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      color: #999;
+      cursor: pointer;
+      border: none;
+    }
+    #tao-modal .tao-tip {
+      font-size: 13px;
+      color: #999;
+      margin-bottom: 16px;
+      text-align: left;
+    }
+    #tao-modal .tao-code-box {
+      background: #f8f8f8;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 20px;
+      text-align: left;
+    }
+    #tao-modal .tao-code-text {
+      font-size: 15px;
+      color: #333;
+      line-height: 1.7;
+      word-break: break-all;
+      user-select: all;
+      -webkit-user-select: all;
+    }
+    #tao-modal .tao-copy-btn {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      background: #FF6A00;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      transition: background 0.2s;
+    }
+    #tao-modal .tao-copy-btn:active { background: #e55d00; }
+    #tao-modal .tao-copy-btn.copied {
+      background: #07c160;
+    }
+    #tao-modal .tao-steps {
+      margin-top: 16px;
+      padding: 12px 16px;
+      background: #FFF8F0;
+      border-radius: 8px;
+      text-align: left;
+    }
+    #tao-modal .tao-steps p {
+      font-size: 13px;
+      color: #FF6A00;
+      line-height: 1.8;
+    }
+    #tao-modal .tao-steps span.num {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      line-height: 18px;
+      text-align: center;
+      background: #FF6A00;
+      color: #fff;
+      border-radius: 50%;
+      font-size: 11px;
+      margin-right: 6px;
+      font-weight: 600;
+    }
+
+    /* ====== 浏览器引导遮罩 ====== */
+    #browser-guide {
+      padding: 40px 30px;
+    }
+    #browser-guide .arrow {
       width: 80px; height: 80px;
       position: absolute;
       top: 16px; right: 30px;
@@ -129,25 +252,25 @@
       0%,100% { transform: translateY(0); }
       50% { transform: translateY(-12px); }
     }
-    #wechat-guide h3 {
+    #browser-guide h3 {
       font-size: 20px;
       margin-top: 100px;
       margin-bottom: 16px;
       font-weight: 600;
     }
-    #wechat-guide p {
+    #browser-guide p {
       font-size: 15px;
       color: rgba(255,255,255,0.8);
       line-height: 1.8;
       margin-bottom: 30px;
     }
-    #wechat-guide .guide-actions {
+    #browser-guide .guide-actions {
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 14px;
     }
-    #wechat-guide .guide-btn {
+    #browser-guide .guide-btn {
       display: inline-block;
       padding: 14px 32px;
       border-radius: 8px;
@@ -157,24 +280,24 @@
       min-width: 260px;
       text-align: center;
     }
-    #wechat-guide .guide-btn.primary {
+    #browser-guide .guide-btn.primary {
       background: #07c160;
       color: #fff;
     }
-    #wechat-guide .guide-btn.secondary {
+    #browser-guide .guide-btn.secondary {
       background: transparent;
       color: rgba(255,255,255,0.7);
       border: 1px solid rgba(255,255,255,0.3);
       font-size: 14px;
       font-weight: 400;
     }
-    #wechat-guide .copy-success {
+    #browser-guide .copy-success {
       color: #07c160;
       font-size: 14px;
       margin-top: 10px;
       display: none;
     }
-    #wechat-guide .close-guide {
+    #browser-guide .close-guide {
       position: absolute;
       bottom: 40px;
       left: 50%;
@@ -204,8 +327,29 @@
   <!-- H5 内容 -->
   <div id="page-content"></div>
 
-  <!-- 微信引导遮罩 -->
-  <div id="wechat-guide">
+  <!-- 淘口令弹窗 -->
+  <div id="tao-modal">
+    <div class="tao-backdrop" onclick="closeTaoModal()"></div>
+    <div class="tao-card">
+      <div class="tao-card-header">
+        <h3>复制淘口令购买</h3>
+        <button class="tao-close" onclick="closeTaoModal()">✕</button>
+      </div>
+      <p class="tao-tip">长按或点击下方按钮复制完整内容，打开淘宝自动弹出商品</p>
+      <div class="tao-code-box">
+        <div class="tao-code-text" id="taoCodeText"></div>
+      </div>
+      <button class="tao-copy-btn" id="taoCopyBtn" onclick="copyTaoCode()">复制淘口令</button>
+      <div class="tao-steps">
+        <p><span class="num">1</span>点击上方按钮复制淘口令</p>
+        <p><span class="num">2</span>打开手机淘宝 / 天猫 APP</p>
+        <p><span class="num">3</span>自动弹出商品页面，直接下单</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 浏览器引导遮罩（非淘系被屏蔽链接用） -->
+  <div id="browser-guide" class="guide-overlay">
     <svg class="arrow" viewBox="0 0 80 80" fill="none">
       <path d="M40 8 L72 40 L40 28 L8 40 Z" fill="white"/>
     </svg>
@@ -216,104 +360,165 @@
       <a class="guide-btn secondary" href="#" id="guideBrowserBtn" onclick="return false;">点右上角 ··· 在浏览器打开</a>
     </div>
     <div class="copy-success" id="copySuccess">✓ 链接已复制，打开浏览器粘贴即可</div>
-    <span class="close-guide" onclick="closeWechatGuide()">关闭此提示</span>
+    <span class="close-guide" onclick="closeBrowserGuide()">关闭此提示</span>
   </div>
 
   <script>
-    // ========== 微信环境检测 + 链接拦截 ==========
+    // ========== 环境检测 ==========
     var isWechat = /MicroMessenger/i.test(navigator.userAgent);
 
-    // 需要在浏览器中打开的域名列表
-    var blockedDomains = [
-      'tmall.com', 'taobao.com', 'detail.tmall.com', 'item.taobao.com',
+    // 淘系域名（走淘口令流程）
+    var taobaoDomains = ['tmall.com', 'taobao.com'];
+
+    // 其他被屏蔽域名（走浏览器引导流程）
+    var otherBlockedDomains = [
       'douyin.com', 'tiktok.com',
-      'jd.com', 'item.jd.com',
       'pinduoduo.com', 'yangkeduo.com'
     ];
 
-    function isBlockedLink(url) {
-      if (!url || url === '#') return false;
+    function getLinkType(url) {
+      if (!url || url === '#') return null;
       try {
         var host = new URL(url).hostname.toLowerCase();
-        return blockedDomains.some(function(d) {
-          return host === d || host.endsWith('.' + d);
-        });
       } catch(e) {
-        // 如果不是有效URL，检查字符串
         var lower = url.toLowerCase();
-        return blockedDomains.some(function(d) { return lower.indexOf(d) > -1; });
+        if (taobaoDomains.some(function(d) { return lower.indexOf(d) > -1; })) return 'taobao';
+        if (otherBlockedDomains.some(function(d) { return lower.indexOf(d) > -1; })) return 'other';
+        return null;
+      }
+      if (taobaoDomains.some(function(d) { return host === d || host.endsWith('.' + d); })) return 'taobao';
+      if (otherBlockedDomains.some(function(d) { return host === d || host.endsWith('.' + d); })) return 'other';
+      return null;
+    }
+
+    // ========== 淘口令弹窗 ==========
+    var currentTaoLink = '';
+
+    function showTaoModal(link, mod) {
+      currentTaoLink = link || '';
+      var modal = document.getElementById('tao-modal');
+      var codeText = document.getElementById('taoCodeText');
+      var copyBtn = document.getElementById('taoCopyBtn');
+
+      // 优先使用模块配置的自定义淘口令，否则自动生成
+      var taoCode = '';
+      if (mod && mod.taoCode) {
+        taoCode = mod.taoCode;
+      } else {
+        taoCode = generateTaoCode(link, mod ? mod.name : '');
+      }
+      codeText.textContent = taoCode;
+
+      copyBtn.textContent = '复制淘口令';
+      copyBtn.className = 'tao-copy-btn';
+
+      modal.style.display = 'block';
+    }
+
+    function closeTaoModal() {
+      document.getElementById('tao-modal').style.display = 'none';
+    }
+
+    function generateTaoCode(link, moduleName) {
+      var name = (moduleName || '康比特好物').replace(/<[^>]+>/g, '');
+      return '￥' + name + '￥\n' +
+             '复制这条信息，打开淘宝即可看到【' + name + '】\n' +
+             link;
+    }
+
+    function copyTaoCode() {
+      var codeText = document.getElementById('taoCodeText').textContent;
+      var copyBtn = document.getElementById('taoCopyBtn');
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(codeText).then(function() {
+          onCopySuccess(copyBtn);
+        }).catch(function() {
+          fallbackCopyText(codeText);
+          onCopySuccess(copyBtn);
+        });
+      } else {
+        fallbackCopyText(codeText);
+        onCopySuccess(copyBtn);
       }
     }
 
+    function onCopySuccess(btn) {
+      btn.textContent = '✓ 已复制，去淘宝打开';
+      btn.className = 'tao-copy-btn copied';
+      // 自动选中文本方便用户手动长按复制
+      var codeText = document.getElementById('taoCodeText');
+      var range = document.createRange();
+      range.selectNodeContents(codeText);
+      var sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+
+    function fallbackCopyText(text) {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      ta.setSelectionRange(0, ta.value.length);
+      try { document.execCommand('copy'); } catch(e) {}
+      document.body.removeChild(ta);
+    }
+
+    // ========== 浏览器引导遮罩 ==========
     var currentBlockedLink = '';
 
-    function showWechatGuide(link) {
-      var guide = document.getElementById('wechat-guide');
+    function showBrowserGuide(link) {
+      var guide = document.getElementById('browser-guide');
       var copyBtn = document.getElementById('guideCopyBtn');
       var browserBtn = document.getElementById('guideBrowserBtn');
       var copySuccess = document.getElementById('copySuccess');
       currentBlockedLink = link || '';
       copyBtn.onclick = function(e) {
         e.preventDefault();
-        copyLink(currentBlockedLink);
+        fallbackCopyText(currentBlockedLink);
+        copySuccess.style.display = 'block';
         return false;
       };
       browserBtn.onclick = function(e) {
         e.preventDefault();
-        // 不关闭遮罩，让用户看到引导箭头指向右上角
         return false;
       };
       copySuccess.style.display = 'none';
       guide.style.display = 'block';
     }
 
-    function copyLink(url) {
-      var copySuccess = document.getElementById('copySuccess');
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(url).then(function() {
-          copySuccess.style.display = 'block';
-        }).catch(function() {
-          fallbackCopy(url, copySuccess);
-        });
-      } else {
-        fallbackCopy(url, copySuccess);
-      }
-    }
-
-    function fallbackCopy(url, copySuccess) {
-      var ta = document.createElement('textarea');
-      ta.value = url;
-      ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px';
-      document.body.appendChild(ta);
-      ta.select();
-      ta.setSelectionRange(0, ta.value.length);
-      try {
-        document.execCommand('copy');
-        copySuccess.style.display = 'block';
-      } catch(e) {}
-      document.body.removeChild(ta);
-    }
-
-    function closeWechatGuide() {
-      document.getElementById('wechat-guide').style.display = 'none';
+    function closeBrowserGuide() {
+      document.getElementById('browser-guide').style.display = 'none';
       return false;
     }
 
-    // 全局链接点击拦截（事件委托）
+    // ========== 全局链接拦截 ==========
     document.addEventListener('click', function(e) {
       var a = e.target.closest('a');
       if (!a) return;
       var href = a.getAttribute('href');
-      if (isWechat && isBlockedLink(href)) {
+      var linkType = isWechat ? getLinkType(href) : null;
+
+      if (linkType === 'taobao') {
         e.preventDefault();
         e.stopPropagation();
-        showWechatGuide(href);
+        // 获取模块数据
+        var modEl = a.closest('[data-tao-code]');
+        var mod = modEl ? {
+          name: modEl.getAttribute('data-module-name') || '',
+          taoCode: modEl.getAttribute('data-tao-code') || ''
+        } : null;
+        showTaoModal(href, mod);
+      } else if (linkType === 'other') {
+        e.preventDefault();
+        e.stopPropagation();
+        showBrowserGuide(href);
       }
     }, true);
 
     // ========== 页面渲染 ==========
     (function() {
-      // 从当前路径提取短码
       var code = location.pathname.replace(/^\/+/, '').replace(/\/+$/, '');
       var content = document.getElementById('page-content');
       var loading = document.getElementById('loading');
@@ -324,7 +529,6 @@
         return;
       }
 
-      // 获取落地页配置
       fetch('/api/landing/' + encodeURIComponent(code))
         .then(function(r) {
           if (!r.ok) throw new Error('not found');
@@ -342,7 +546,6 @@
         });
 
       function render(config) {
-        // 设置页面标题和背景色
         document.title = config.title || '活动页面';
         if (config.bgColor) document.body.style.backgroundColor = config.bgColor;
 
@@ -379,7 +582,9 @@
 
       var imgHtml = '<img src="' + escAttr(mod.src) + '" alt="" style="' + style + '" loading="lazy">';
       if (mod.link) {
-        return '<div class="mod-image"><a href="' + escAttr(mod.link) + '" target="_blank" rel="noopener">' + imgHtml + '</a></div>';
+        // 把模块数据存到 data 属性中，供点击拦截使用
+        var dataAttrs = 'data-module-name="' + escAttr(mod.name || '') + '" data-tao-code="' + escAttr(mod.taoCode || '') + '"';
+        return '<div class="mod-image" ' + dataAttrs + '><a href="' + escAttr(mod.link) + '" target="_blank" rel="noopener">' + imgHtml + '</a></div>';
       }
       return '<div class="mod-image">' + imgHtml + '</div>';
     }
@@ -407,7 +612,8 @@
       if (st.fontSize) css.push('font-size:' + st.fontSize + 'px');
       if (st.margin) css.push('margin:' + st.margin);
       var link = mod.link || '#';
-      return '<div class="mod-button"><a href="' + escAttr(link) + '" style="' + css.join(';') + '" target="_blank" rel="noopener">' + escHtml(mod.text || '按钮') + '</a></div>';
+      var dataAttrs = 'data-module-name="' + escAttr(mod.name || mod.text || '') + '" data-tao-code="' + escAttr(mod.taoCode || '') + '"';
+      return '<div class="mod-button" ' + dataAttrs + '><a href="' + escAttr(link) + '" style="' + css.join(';') + '" target="_blank" rel="noopener">' + escHtml(mod.text || '按钮') + '</a></div>';
     }
 
     function escAttr(s) {

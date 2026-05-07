@@ -574,13 +574,13 @@ function addModule(type) {
   let mod;
   switch(type) {
     case 'image':
-      mod = { id: genId(), type: 'image', src: '', link: '', borderRadius: 0 };
+      mod = { id: genId(), type: 'image', name: '', src: '', link: '', taoCode: '', borderRadius: 0 };
       break;
     case 'text':
       mod = { id: genId(), type: 'text', content: '请输入文字', style: { fontSize: 16, color: '#333333', align: 'center', bold: false } };
       break;
     case 'button':
-      mod = { id: genId(), type: 'button', text: '立即购买', link: '', style: { bgColor: '#ef4444', color: '#ffffff', borderRadius: 8 } };
+      mod = { id: genId(), type: 'button', name: '', text: '立即购买', link: '', taoCode: '', style: { bgColor: '#ef4444', color: '#ffffff', borderRadius: 8 } };
       break;
     case 'divider':
       mod = { id: genId(), type: 'divider' };
@@ -710,6 +710,9 @@ function showPropPanel(idx) {
   switch(mod.type) {
     case 'image':
       html = `
+        <label>商品名称</label>
+        <input value="${escAttr(mod.name)}" placeholder="用于生成淘口令文案" oninput="updateMod('name', this.value)">
+
         <label>图片</label>
         <div class="flex gap-2">
           <input id="propImgSrc" value="${escAttr(mod.src)}" placeholder="图片URL" oninput="updateMod('src', this.value)">
@@ -718,7 +721,10 @@ function showPropPanel(idx) {
         <input type="file" id="imgFileInput" accept="image/*" style="display:none" onchange="doUploadImage()">
 
         <label>点击跳转链接</label>
-        <input value="${escAttr(mod.link)}" placeholder="可选，留空不可点击" oninput="updateMod('link', this.value)">
+        <input value="${escAttr(mod.link)}" placeholder="淘宝/天猫/京东等链接" oninput="updateMod('link', this.value)">
+
+        <label>自定义淘口令</label>
+        <textarea placeholder="留空自动生成，格式如：￥商品名￥\n复制这条信息打开淘宝" oninput="updateMod('taoCode', this.value)">${escHtml(mod.taoCode||'')}</textarea>
 
         <label>圆角(px)</label>
         <input type="number" value="${mod.borderRadius||0}" min="0" oninput="updateMod('borderRadius', parseInt(this.value)||0)">`;
@@ -751,11 +757,17 @@ function showPropPanel(idx) {
     case 'button':
       const bs = mod.style || {};
       html = `
+        <label>商品名称</label>
+        <input value="${escAttr(mod.name)}" placeholder="用于生成淘口令文案" oninput="updateMod('name', this.value)">
+
         <label>按钮文字</label>
         <input value="${escAttr(mod.text)}" oninput="updateMod('text', this.value)">
 
         <label>跳转链接</label>
-        <input value="${escAttr(mod.link)}" placeholder="点击后跳转的URL" oninput="updateMod('link', this.value)">
+        <input value="${escAttr(mod.link)}" placeholder="淘宝/天猫/京东等链接" oninput="updateMod('link', this.value)">
+
+        <label>自定义淘口令</label>
+        <textarea placeholder="留空自动生成" oninput="updateMod('taoCode', this.value)">${escHtml(mod.taoCode||'')}</textarea>
 
         <div class="prop-row">
           <div><label>按钮颜色</label><input type="color" value="${bs.bgColor||'#ef4444'}" oninput="updateBtnStyle('bgColor', this.value)"></div>
