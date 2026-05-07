@@ -141,16 +141,38 @@
       line-height: 1.8;
       margin-bottom: 30px;
     }
-    #wechat-guide .guide-link {
+    #wechat-guide .guide-actions {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+    #wechat-guide .guide-btn {
       display: inline-block;
-      background: #07c160;
-      color: #fff;
-      padding: 12px 32px;
+      padding: 14px 32px;
       border-radius: 8px;
       font-size: 16px;
       font-weight: 600;
       text-decoration: none;
+      min-width: 260px;
+      text-align: center;
+    }
+    #wechat-guide .guide-btn.primary {
+      background: #07c160;
+      color: #fff;
+    }
+    #wechat-guide .guide-btn.secondary {
+      background: transparent;
+      color: rgba(255,255,255,0.7);
+      border: 1px solid rgba(255,255,255,0.3);
+      font-size: 14px;
+      font-weight: 400;
+    }
+    #wechat-guide .copy-success {
+      color: #07c160;
+      font-size: 14px;
       margin-top: 10px;
+      display: none;
     }
     #wechat-guide .close-guide {
       position: absolute;
@@ -187,9 +209,13 @@
     <svg class="arrow" viewBox="0 0 80 80" fill="none">
       <path d="M40 8 L72 40 L40 28 L8 40 Z" fill="white"/>
     </svg>
-    <h3>请在浏览器中打开</h3>
-    <p>当前链接需要在浏览器中访问<br>请点击右上角 <strong>···</strong> 选择「在浏览器中打开」</p>
-    <a class="guide-link" id="guideLink" href="#" onclick="closeWechatGuide()">知道了，去浏览器打开</a>
+    <h3>无法在微信内直接打开</h3>
+    <p>该商品链接需要在浏览器中访问<br>请选择以下方式打开</p>
+    <div class="guide-actions">
+      <a class="guide-btn primary" href="#" id="guideCopyBtn" onclick="return false;">复制链接，稍后粘贴打开</a>
+      <a class="guide-btn secondary" href="#" id="guideBrowserBtn" onclick="return false;">点右上角 ··· 在浏览器打开</a>
+    </div>
+    <div class="copy-success" id="copySuccess">✓ 链接已复制，打开浏览器粘贴即可</div>
     <span class="close-guide" onclick="closeWechatGuide()">关闭此提示</span>
   </div>
 
@@ -219,11 +245,53 @@
       }
     }
 
+    var currentBlockedLink = '';
+
     function showWechatGuide(link) {
       var guide = document.getElementById('wechat-guide');
-      var guideLink = document.getElementById('guideLink');
-      guideLink.href = link || '#';
+      var copyBtn = document.getElementById('guideCopyBtn');
+      var browserBtn = document.getElementById('guideBrowserBtn');
+      var copySuccess = document.getElementById('copySuccess');
+      currentBlockedLink = link || '';
+      copyBtn.onclick = function(e) {
+        e.preventDefault();
+        copyLink(currentBlockedLink);
+        return false;
+      };
+      browserBtn.onclick = function(e) {
+        e.preventDefault();
+        // 不关闭遮罩，让用户看到引导箭头指向右上角
+        return false;
+      };
+      copySuccess.style.display = 'none';
       guide.style.display = 'block';
+    }
+
+    function copyLink(url) {
+      var copySuccess = document.getElementById('copySuccess');
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(function() {
+          copySuccess.style.display = 'block';
+        }).catch(function() {
+          fallbackCopy(url, copySuccess);
+        });
+      } else {
+        fallbackCopy(url, copySuccess);
+      }
+    }
+
+    function fallbackCopy(url, copySuccess) {
+      var ta = document.createElement('textarea');
+      ta.value = url;
+      ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      ta.setSelectionRange(0, ta.value.length);
+      try {
+        document.execCommand('copy');
+        copySuccess.style.display = 'block';
+      } catch(e) {}
+      document.body.removeChild(ta);
     }
 
     function closeWechatGuide() {
