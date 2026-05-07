@@ -3,5 +3,6 @@ data/*.db
 data/*.db-wal
 data/*.db-shm
 .env
+uploads/
 gen-qr.js
 demo-qr.png

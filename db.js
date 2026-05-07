@@ -28,14 +28,14 @@ function memGetCodeByCode(code) {
   for (const c of memCodes.values()) { if (c.code === code) return c; }
   return null;
 }
-function memCreateCode(name, code, url) {
+function memCreateCode(name, code, url, mode, landingConfig) {
   if (memGetCodeByCode(code)) { const e = new Error('UNIQUE constraint failed: codes.code'); throw e; }
   const id = nextId++;
-  memCodes.set(id, { id, name, code, url, created_at: new Date().toISOString().replace('T', ' ').slice(0, 19) });
+  memCodes.set(id, { id, name, code, url, mode: mode || 'redirect', landing_config: landingConfig || null, created_at: new Date().toISOString().replace('T', ' ').slice(0, 19) });
   return id;
 }
-function memUpdateCode(id, name, url) {
-  const c = memCodes.get(id); if (!c) return { changes: 0 }; c.name = name; c.url = url; return { changes: 1 };
+function memUpdateCode(id, name, url, mode, landingConfig) {
+  const c = memCodes.get(id); if (!c) return { changes: 0 }; c.name = name; c.url = url; if (mode !== undefined) c.mode = mode; if (landingConfig !== undefined) c.landing_config = landingConfig; return { changes: 1 };
 }
 function memDeleteCode(id) {
   memCodes.delete(id);
@@ -93,6 +93,8 @@ async function init() {
       name TEXT NOT NULL,
       code TEXT UNIQUE NOT NULL,
       url TEXT NOT NULL,
+      mode TEXT NOT NULL DEFAULT 'redirect',
+      landing_config JSONB DEFAULT NULL,
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
     CREATE TABLE IF NOT EXISTS scans (
@@ -107,6 +109,14 @@ async function init() {
     CREATE INDEX IF NOT EXISTS idx_scans_created_at ON scans(created_at);
   `);
   console.log('✅ PostgreSQL 表结构已就绪');
+  // 为旧数据添加新字段默认值
+  try {
+    await pool.query("ALTER TABLE codes ADD COLUMN IF NOT EXISTS mode TEXT NOT NULL DEFAULT 'redirect'");
+    await pool.query("ALTER TABLE codes ADD COLUMN IF NOT EXISTS landing_config JSONB DEFAULT NULL");
+    console.log('✅ codes 表字段已更新');
+  } catch (e) {
+    console.log('ℹ️ 字段更新跳过:', e.message);
+  }
 }
 
 async function getAllCodes() {
@@ -117,27 +127,34 @@ async function getAllCodes() {
     LEFT JOIN (SELECT code_id, COUNT(*) as scan_count FROM scans GROUP BY code_id) cnt ON cnt.code_id = c.id
     ORDER BY c.created_at DESC
   `);
-  return rows;
+  return rows.map(r => {
+    if (typeof r.landing_config === 'string') r.landing_config = JSON.parse(r.landing_config);
+    return r;
+  });
 }
 
 async function getCodeById(id) {
   if (!usePostgres) return memGetCodeById(id);
   const { rows } = await pool.query('SELECT * FROM codes WHERE id = $1', [id]);
-  return rows[0] || null;
+  const r = rows[0] || null;
+  if (r && typeof r.landing_config === 'string') r.landing_config = JSON.parse(r.landing_config);
+  return r;
 }
 
 async function getCodeByCode(code) {
   if (!usePostgres) return memGetCodeByCode(code);
   const { rows } = await pool.query('SELECT * FROM codes WHERE code = $1', [code]);
-  return rows[0] || null;
+  const r = rows[0] || null;
+  if (r && typeof r.landing_config === 'string') r.landing_config = JSON.parse(r.landing_config);
+  return r;
 }
 
-async function createCode(name, code, url) {
-  if (!usePostgres) return memCreateCode(name, code, url);
+async function createCode(name, code, url, mode, landingConfig) {
+  if (!usePostgres) return memCreateCode(name, code, url, mode, landingConfig);
   try {
     const { rows } = await pool.query(
-      'INSERT INTO codes (name, code, url) VALUES ($1, $2, $3) RETURNING id',
-      [name, code, url]
+      'INSERT INTO codes (name, code, url, mode, landing_config) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+      [name, code, url, mode || 'redirect', landingConfig ? JSON.stringify(landingConfig) : null]
     );
     return rows[0].id;
   } catch (e) {
@@ -149,11 +166,11 @@ async function createCode(name, code, url) {
   }
 }
 
-async function updateCode(id, name, url) {
-  if (!usePostgres) return memUpdateCode(id, name, url);
+async function updateCode(id, name, url, mode, landingConfig) {
+  if (!usePostgres) return memUpdateCode(id, name, url, mode, landingConfig);
   const { rowCount } = await pool.query(
-    'UPDATE codes SET name = $1, url = $2 WHERE id = $3',
-    [name, url, id]
+    'UPDATE codes SET name = $1, url = $2, mode = COALESCE($3, mode), landing_config = COALESCE($4, landing_config) WHERE id = $5',
+    [name, url, mode || null, landingConfig ? JSON.stringify(landingConfig) : null, id]
   );
   return { changes: rowCount };
 }

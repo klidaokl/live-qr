@@ -1,7 +1,9 @@
 const express = require('express');
 const QRCode = require('qrcode');
 const path = require('path');
+const fs = require('fs');
 const { nanoid } = require('nanoid');
+const multer = require('multer');
 const db = require('./db');
 
 const app = express();
@@ -11,6 +13,30 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 // 中间件
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+
+// uploads 目录
+const UPLOADS_DIR = path.join(__dirname, 'uploads');
+if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+app.use('/uploads', express.static(UPLOADS_DIR));
+
+// multer 配置
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, UPLOADS_DIR),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, `${Date.now()}-${nanoid(8)}${ext}`);
+  }
+});
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (req, file, cb) => {
+    const allowed = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowed.includes(ext)) cb(null, true);
+    else cb(new Error('仅支持 jpg/png/webp/gif 格式'));
+  }
+});
 
 // ========== 管理后台API ==========
 
@@ -34,14 +60,18 @@ app.get('/admin/api/codes', checkAuth, async (req, res) => {
 
 // 创建活码
 app.post('/admin/api/codes', checkAuth, async (req, res) => {
-  const { name, code, url } = req.body;
-  if (!name || !url) {
-    return res.status(400).json({ error: '名称和跳转URL不能为空' });
+  const { name, code, url, mode, landing_config } = req.body;
+  const useMode = mode || 'redirect';
+  if (!name) {
+    return res.status(400).json({ error: '名称不能为空' });
+  }
+  if (useMode === 'redirect' && !url) {
+    return res.status(400).json({ error: '跳转URL不能为空' });
   }
   const shortCode = code || nanoid(6);
   try {
-    const id = await db.createCode(name, shortCode, url);
-    res.json({ id, code: shortCode, name, url });
+    const id = await db.createCode(name, shortCode, url || '', useMode, landing_config || null);
+    res.json({ id, code: shortCode, name, url: url || '', mode: useMode, landing_config });
   } catch (e) {
     if (e.message && e.message.includes('UNIQUE')) {
       return res.status(409).json({ error: '短码已存在，请换一个' });
@@ -52,12 +82,12 @@ app.post('/admin/api/codes', checkAuth, async (req, res) => {
 
 // 更新活码
 app.put('/admin/api/codes/:id', checkAuth, async (req, res) => {
-  const { name, url } = req.body;
-  if (!name || !url) {
-    return res.status(400).json({ error: '名称和跳转URL不能为空' });
+  const { name, url, mode, landing_config } = req.body;
+  if (!name) {
+    return res.status(400).json({ error: '名称不能为空' });
   }
   try {
-    const row = await db.updateCode(Number(req.params.id), name, url);
+    const row = await db.updateCode(Number(req.params.id), name, url || '', mode, landing_config);
     if (row.changes === 0) {
       return res.status(404).json({ error: '活码不存在' });
     }
@@ -112,12 +142,41 @@ app.get('/admin/api/codes/:id/qrcode', checkAuth, async (req, res) => {
   }
 });
 
+// 图片上传
+app.post('/admin/api/upload', checkAuth, upload.single('image'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: '请选择图片' });
+  }
+  const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+  const imageUrl = `${baseUrl}/uploads/${req.file.filename}`;
+  res.json({ url: imageUrl, filename: req.file.filename });
+}, (err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    res.status(400).json({ error: `上传失败: ${err.message}` });
+  } else if (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 // 健康检查
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', uptime: process.uptime() });
 });
 
-// ========== 核心功能：短码重定向 ==========
+// ========== 核心功能：短码访问 ==========
+
+// 落地页配置 API（公开，供 landing.html 前端获取）
+app.get('/api/landing/:code', async (req, res) => {
+  try {
+    const record = await db.getCodeByCode(req.params.code);
+    if (!record || record.mode !== 'landing' || !record.landing_config) {
+      return res.status(404).json({ error: 'not found' });
+    }
+    res.json(record.landing_config);
+  } catch (e) {
+    res.status(500).json({ error: 'server error' });
+  }
+});
 
 function parseSource(ua) {
   if (!ua) return 'other';
@@ -134,12 +193,12 @@ app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// 短码重定向
+// 短码访问
 app.get('/:code', async (req, res) => {
   const { code } = req.params;
 
-  // 排除静态资源路径
-  if (['favicon.ico'].includes(code)) {
+  // 排除静态资源和管理路径
+  if (['favicon.ico', 'admin', 'health'].includes(code)) {
     return res.status(404).send('Not Found');
   }
 
@@ -149,14 +208,25 @@ app.get('/:code', async (req, res) => {
       return res.status(404).send('该活码不存在');
     }
 
-    // 记录扫码（异步，不阻塞重定向）
+    // 记录扫码（异步，不阻塞响应）
     const ip = req.ip || req.connection.remoteAddress;
     const ua = req.get('user-agent') || '';
     const source = parseSource(ua);
     db.recordScan(record.id, ip, ua, source).catch(() => {});
 
-    // 302重定向
-    res.redirect(302, record.url);
+    // 根据模式决定行为
+    if (record.mode === 'landing' && record.landing_config) {
+      // H5 落地页模式 — 渲染 landing.html 模板
+      res.sendFile(path.join(__dirname, 'public', 'landing.html'));
+      return;
+    }
+
+    // 默认：302重定向
+    if (record.url) {
+      res.redirect(302, record.url);
+    } else {
+      res.status(404).send('该活码未配置跳转地址');
+    }
   } catch (e) {
     res.status(500).send('服务异常');
   }
@@ -173,7 +243,7 @@ app.listen(PORT, '0.0.0.0', () => {
 // 异步初始化数据库
 db.init().catch(err => {
   console.error('数据库初始化失败:', err.message);
-  if (DATABASE_URL) process.exit(1); // 有PG连接串时初始化失败才退出
+  if (process.env.DATABASE_URL) process.exit(1); // 有PG连接串时初始化失败才退出
 });
 
 process.on('uncaughtException', (err) => {

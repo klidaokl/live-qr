@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>加载中...</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
+      max-width: 750px;
+      margin: 0 auto;
+      min-height: 100vh;
+      overflow-x: hidden;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    /* 加载状态 */
+    #loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      color: #999;
+      font-size: 14px;
+    }
+    .spinner {
+      width: 32px; height: 32px;
+      border: 3px solid #eee;
+      border-top-color: #ef4444;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-right: 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* 模块容器 */
+    #page-content { display: none; }
+
+    /* 图片模块 */
+    .mod-image {
+      width: 100%;
+      overflow: hidden;
+      line-height: 0;
+    }
+    .mod-image img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+    .mod-image a {
+      display: block;
+      position: relative;
+    }
+
+    /* 文字模块 */
+    .mod-text {
+      padding: 12px 20px;
+      word-break: break-word;
+      line-height: 1.6;
+    }
+
+    /* 按钮模块 */
+    .mod-button {
+      padding: 12px 20px;
+    }
+    .mod-button a {
+      display: block;
+      text-align: center;
+      padding: 14px 24px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      text-decoration: none;
+      color: #fff;
+      transition: opacity 0.2s;
+    }
+    .mod-button a:active { opacity: 0.8; }
+
+    /* 分割线模块 */
+    .mod-divider {
+      height: 1px;
+      background: #eee;
+      margin: 0 20px;
+    }
+
+    /* 空白间距模块 */
+    .mod-spacer {
+      height: 20px;
+    }
+
+    /* 页脚 */
+    .page-footer {
+      text-align: center;
+      padding: 24px 20px;
+      color: #ccc;
+      font-size: 11px;
+    }
+
+    /* 404 */
+    #error-page {
+      display: none;
+      text-align: center;
+      padding: 80px 20px;
+      color: #999;
+    }
+    #error-page .icon { font-size: 64px; margin-bottom: 16px; }
+    #error-page h2 { font-size: 18px; color: #666; margin-bottom: 8px; }
+    #error-page p { font-size: 14px; }
+
+    /* 微信引导遮罩 */
+    #wechat-guide {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 9999;
+      color: #fff;
+      padding: 40px 30px;
+      text-align: center;
+    }
+    #wechat-guide .arrow {
+      width: 80px; height: 80px;
+      position: absolute;
+      top: 16px; right: 30px;
+      animation: bounce 1.5s infinite;
+    }
+    @keyframes bounce {
+      0%,100% { transform: translateY(0); }
+      50% { transform: translateY(-12px); }
+    }
+    #wechat-guide h3 {
+      font-size: 20px;
+      margin-top: 100px;
+      margin-bottom: 16px;
+      font-weight: 600;
+    }
+    #wechat-guide p {
+      font-size: 15px;
+      color: rgba(255,255,255,0.8);
+      line-height: 1.8;
+      margin-bottom: 30px;
+    }
+    #wechat-guide .guide-link {
+      display: inline-block;
+      background: #07c160;
+      color: #fff;
+      padding: 12px 32px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      text-decoration: none;
+      margin-top: 10px;
+    }
+    #wechat-guide .close-guide {
+      position: absolute;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: rgba(255,255,255,0.5);
+      font-size: 14px;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 加载中 -->
+  <div id="loading">
+    <div class="spinner"></div>
+    <span>加载中...</span>
+  </div>
+
+  <!-- 错误页 -->
+  <div id="error-page">
+    <div class="icon">:(</div>
+    <h2>页面不存在</h2>
+    <p>该活码可能已被删除或链接无效</p>
+  </div>
+
+  <!-- H5 内容 -->
+  <div id="page-content"></div>
+
+  <!-- 微信引导遮罩 -->
+  <div id="wechat-guide">
+    <svg class="arrow" viewBox="0 0 80 80" fill="none">
+      <path d="M40 8 L72 40 L40 28 L8 40 Z" fill="white"/>
+    </svg>
+    <h3>请在浏览器中打开</h3>
+    <p>当前链接需要在浏览器中访问<br>请点击右上角 <strong>···</strong> 选择「在浏览器中打开」</p>
+    <a class="guide-link" id="guideLink" href="#" onclick="closeWechatGuide()">知道了，去浏览器打开</a>
+    <span class="close-guide" onclick="closeWechatGuide()">关闭此提示</span>
+  </div>
+
+  <script>
+    // ========== 微信环境检测 + 链接拦截 ==========
+    var isWechat = /MicroMessenger/i.test(navigator.userAgent);
+
+    // 需要在浏览器中打开的域名列表
+    var blockedDomains = [
+      'tmall.com', 'taobao.com', 'detail.tmall.com', 'item.taobao.com',
+      'douyin.com', 'tiktok.com',
+      'jd.com', 'item.jd.com',
+      'pinduoduo.com', 'yangkeduo.com'
+    ];
+
+    function isBlockedLink(url) {
+      if (!url || url === '#') return false;
+      try {
+        var host = new URL(url).hostname.toLowerCase();
+        return blockedDomains.some(function(d) {
+          return host === d || host.endsWith('.' + d);
+        });
+      } catch(e) {
+        // 如果不是有效URL，检查字符串
+        var lower = url.toLowerCase();
+        return blockedDomains.some(function(d) { return lower.indexOf(d) > -1; });
+      }
+    }
+
+    function showWechatGuide(link) {
+      var guide = document.getElementById('wechat-guide');
+      var guideLink = document.getElementById('guideLink');
+      guideLink.href = link || '#';
+      guide.style.display = 'block';
+    }
+
+    function closeWechatGuide() {
+      document.getElementById('wechat-guide').style.display = 'none';
+      return false;
+    }
+
+    // 全局链接点击拦截（事件委托）
+    document.addEventListener('click', function(e) {
+      var a = e.target.closest('a');
+      if (!a) return;
+      var href = a.getAttribute('href');
+      if (isWechat && isBlockedLink(href)) {
+        e.preventDefault();
+        e.stopPropagation();
+        showWechatGuide(href);
+      }
+    }, true);
+
+    // ========== 页面渲染 ==========
+    (function() {
+      // 从当前路径提取短码
+      var code = location.pathname.replace(/^\/+/, '').replace(/\/+$/, '');
+      var content = document.getElementById('page-content');
+      var loading = document.getElementById('loading');
+      var errorPage = document.getElementById('error-page');
+
+      if (!code) {
+        showError();
+        return;
+      }
+
+      // 获取落地页配置
+      fetch('/api/landing/' + encodeURIComponent(code))
+        .then(function(r) {
+          if (!r.ok) throw new Error('not found');
+          return r.json();
+        })
+        .then(function(config) {
+          if (!config || !config.modules || config.modules.length === 0) {
+            showError();
+            return;
+          }
+          render(config);
+        })
+        .catch(function() {
+          showError();
+        });
+
+      function render(config) {
+        // 设置页面标题和背景色
+        document.title = config.title || '活动页面';
+        if (config.bgColor) document.body.style.backgroundColor = config.bgColor;
+
+        var html = '';
+        config.modules.forEach(function(mod) {
+          if (!mod) return;
+          switch(mod.type) {
+            case 'image': html += renderImage(mod); break;
+            case 'text': html += renderText(mod); break;
+            case 'button': html += renderButton(mod); break;
+            case 'divider': html += '<div class="mod-divider"></div>'; break;
+            case 'spacer': html += '<div class="mod-spacer" style="height:' + (mod.height || 20) + 'px"></div>'; break;
+          }
+        });
+
+        html += '<div class="page-footer">Powered by 康比特</div>';
+        content.innerHTML = html;
+        loading.style.display = 'none';
+        content.style.display = 'block';
+      }
+
+      function showError() {
+        loading.style.display = 'none';
+        errorPage.style.display = 'block';
+      }
+    })();
+
+    function renderImage(mod) {
+      var s = [];
+      if (mod.borderRadius) s.push('border-radius:' + mod.borderRadius + 'px');
+      if (mod.padding) s.push('padding:' + mod.padding);
+      if (mod.bgColor) s.push('background-color:' + mod.bgColor);
+      var style = s.join(';');
+
+      var imgHtml = '<img src="' + escAttr(mod.src) + '" alt="" style="' + style + '" loading="lazy">';
+      if (mod.link) {
+        return '<div class="mod-image"><a href="' + escAttr(mod.link) + '" target="_blank" rel="noopener">' + imgHtml + '</a></div>';
+      }
+      return '<div class="mod-image">' + imgHtml + '</div>';
+    }
+
+    function renderText(mod) {
+      var st = mod.style || {};
+      var css = [];
+      if (st.fontSize) css.push('font-size:' + st.fontSize + 'px');
+      if (st.color) css.push('color:' + st.color);
+      if (st.align) css.push('text-align:' + st.align);
+      if (st.bold) css.push('font-weight:bold');
+      if (st.lineHeight) css.push('line-height:' + st.lineHeight);
+      if (st.padding) css.push('padding:' + st.padding);
+      if (st.bgColor) css.push('background-color:' + st.bgColor);
+      var tag = st.bold ? '<strong>' + escHtml(mod.content || '') + '</strong>' : escHtml(mod.content || '');
+      return '<div class="mod-text" style="' + css.join(';') + '">' + tag + '</div>';
+    }
+
+    function renderButton(mod) {
+      var st = mod.style || {};
+      var css = [];
+      if (st.bgColor) css.push('background-color:' + st.bgColor);
+      if (st.color) css.push('color:' + st.color);
+      if (st.borderRadius) css.push('border-radius:' + st.borderRadius + 'px');
+      if (st.fontSize) css.push('font-size:' + st.fontSize + 'px');
+      if (st.margin) css.push('margin:' + st.margin);
+      var link = mod.link || '#';
+      return '<div class="mod-button"><a href="' + escAttr(link) + '" style="' + css.join(';') + '" target="_blank" rel="noopener">' + escHtml(mod.text || '按钮') + '</a></div>';
+    }
+
+    function escAttr(s) {
+      var d = document.createElement('div');
+      d.textContent = s || '';
+      return d.innerHTML;
+    }
+
+    function escHtml(s) {
+      var d = document.createElement('div');
+      d.textContent = s || '';
+      return d.innerHTML;
+    }
+  </script>
+</body>
+</html>

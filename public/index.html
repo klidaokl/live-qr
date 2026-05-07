@@ -14,6 +14,94 @@
     @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
     @keyframes fadeOut { to { opacity: 0; } }
     .modal-bg { background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); }
+
+    /* H5 编辑器样式 */
+    .phone-frame {
+      width: 375px;
+      height: 667px;
+      border: 2px solid #ddd;
+      border-radius: 32px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      background: #fff;
+      position: relative;
+      flex-shrink: 0;
+    }
+    .phone-frame::-webkit-scrollbar { width: 3px; }
+    .phone-frame::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+
+    .ed-module {
+      position: relative;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: border-color 0.2s;
+    }
+    .ed-module:hover { border-color: #93c5fd; }
+    .ed-module.active { border-color: #3b82f6; }
+    .ed-module .ed-actions {
+      position: absolute;
+      top: -28px;
+      right: 0;
+      display: none;
+      gap: 2px;
+      z-index: 10;
+    }
+    .ed-module:hover .ed-actions,
+    .ed-module.active .ed-actions { display: flex; }
+    .ed-actions button {
+      width: 24px; height: 24px;
+      display: flex; align-items: center; justify-content: center;
+      background: #3b82f6;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .ed-actions button:hover { background: #2563eb; }
+    .ed-actions button.del-btn { background: #ef4444; }
+    .ed-actions button.del-btn:hover { background: #dc2626; }
+
+    .ed-module img { width: 100%; display: block; }
+
+    /* 模块类型标签 */
+    .mod-type-tag {
+      position: absolute; top: 4px; left: 4px;
+      background: rgba(59,130,246,0.85); color: #fff;
+      font-size: 10px; padding: 1px 6px; border-radius: 3px;
+      pointer-events: none;
+    }
+
+    /* 添加模块工具栏 */
+    .add-module-bar {
+      display: flex; gap: 6px; flex-wrap: wrap;
+      padding: 8px 12px; background: #f9fafb;
+      border: 1px dashed #d1d5db; border-radius: 8px;
+    }
+    .add-module-bar button {
+      display: flex; align-items: center; gap: 4px;
+      padding: 6px 12px; font-size: 12px;
+      border: 1px solid #e5e7eb; border-radius: 6px;
+      background: #fff; cursor: pointer; color: #374151;
+      transition: all 0.2s;
+    }
+    .add-module-bar button:hover { border-color: #3b82f6; color: #3b82f6; background: #eff6ff; }
+
+    /* 属性编辑面板 */
+    .prop-panel label {
+      display: block; font-size: 12px; color: #6b7280; margin-bottom: 4px; margin-top: 10px;
+    }
+    .prop-panel label:first-child { margin-top: 0; }
+    .prop-panel input, .prop-panel textarea, .prop-panel select {
+      width: 100%; border: 1px solid #d1d5db; border-radius: 6px;
+      padding: 6px 10px; font-size: 13px; outline: none;
+    }
+    .prop-panel input:focus, .prop-panel textarea:focus, .prop-panel select:focus {
+      border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.15);
+    }
+    .prop-panel textarea { resize: vertical; min-height: 60px; }
+    .prop-row { display: flex; gap: 8px; }
+    .prop-row > div { flex: 1; }
   </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -43,46 +131,110 @@
 
   <!-- 主内容区（登录后可见） -->
   <div id="mainContent" class="hidden max-w-5xl mx-auto px-6 py-6 fade-in">
-
-    <!-- 操作栏 -->
     <div class="flex items-center justify-between mb-6">
       <p class="text-gray-500 text-sm" id="baseUrl"></p>
       <button onclick="showCreateModal()" class="px-5 py-2.5 bg-red-500 text-white rounded-lg text-sm hover:bg-red-600 transition font-medium">+ 新建活码</button>
     </div>
-
-    <!-- 活码列表 -->
     <div id="codeList" class="space-y-3"></div>
-
-    <!-- 空状态 -->
     <div id="emptyState" class="hidden text-center py-20">
       <div class="text-gray-300 text-6xl mb-4">📦</div>
       <p class="text-gray-400">还没有活码，点击上方按钮创建</p>
     </div>
   </div>
 
-  <!-- 创建/编辑弹窗 -->
+  <!-- ========== 创建/编辑弹窗（简单模式） ========== -->
   <div id="modal" class="hidden fixed inset-0 z-50 modal-bg flex items-center justify-center p-4">
     <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6 fade-in">
       <h3 id="modalTitle" class="text-lg font-semibold text-gray-700 mb-4">新建活码</h3>
       <input type="hidden" id="editId">
+
+      <!-- 模式选择 -->
+      <div class="mb-4">
+        <label class="block text-sm text-gray-500 mb-2">活码模式</label>
+        <div class="flex gap-2">
+          <button onclick="setMode('redirect')" id="modeRedirect" class="flex-1 py-2.5 border-2 border-red-500 bg-red-50 text-red-500 rounded-lg text-sm font-medium transition">直接跳转</button>
+          <button onclick="setMode('landing')" id="modeLanding" class="flex-1 py-2.5 border-2 border-gray-200 text-gray-500 rounded-lg text-sm font-medium transition">H5营销页</button>
+        </div>
+      </div>
+
       <div class="mb-4">
         <label class="block text-sm text-gray-500 mb-1">活码名称</label>
         <input id="inputName" type="text" placeholder="如：5月蛋白粉主推"
           class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-red-400">
       </div>
+
       <div class="mb-4" id="codeField">
         <label class="block text-sm text-gray-500 mb-1">短码（可选，留空自动生成）</label>
         <input id="inputCode" type="text" placeholder="如：may2025"
           class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-red-400">
       </div>
-      <div class="mb-6">
+
+      <!-- 跳转模式：URL输入 -->
+      <div id="redirectSection" class="mb-6">
         <label class="block text-sm text-gray-500 mb-1">跳转目标URL</label>
         <input id="inputUrl" type="url" placeholder="https://item.jd.com/100012345.html"
           class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-red-400">
       </div>
+
+      <!-- H5页面模式：编辑按钮 -->
+      <div id="landingSection" class="mb-6 hidden">
+        <button onclick="openLandingEditor()" class="w-full py-3 border-2 border-dashed border-blue-300 text-blue-500 rounded-lg text-sm hover:bg-blue-50 transition font-medium">
+          ✏️ 编辑H5页面内容
+        </button>
+        <p class="text-xs text-gray-400 mt-2 text-center" id="landingHint">尚未编辑页面内容</p>
+      </div>
+
       <div class="flex gap-3">
         <button onclick="closeModal()" class="flex-1 py-2.5 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 transition">取消</button>
         <button onclick="saveCode()" class="flex-1 py-2.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition font-medium">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== H5页面编辑器弹窗（全屏） ========== -->
+  <div id="landingEditor" class="hidden fixed inset-0 z-[60] bg-gray-100 flex flex-col">
+    <!-- 顶部栏 -->
+    <div class="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between flex-shrink-0">
+      <h3 class="text-base font-semibold text-gray-700">H5页面编辑器</h3>
+      <div class="flex items-center gap-3">
+        <button onclick="previewLanding()" class="px-4 py-1.5 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition">预览</button>
+        <button onclick="saveLandingConfig()" class="px-4 py-1.5 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">确认保存</button>
+        <button onclick="cancelLandingEditor()" class="px-4 py-1.5 text-sm border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 transition">取消</button>
+      </div>
+    </div>
+
+    <div class="flex flex-1 overflow-hidden">
+      <!-- 左侧：手机预览 -->
+      <div class="flex-1 flex flex-col items-center py-6 overflow-y-auto">
+        <div class="phone-frame" id="phonePreview">
+          <div id="phoneContent"></div>
+        </div>
+      </div>
+
+      <!-- 右侧：模块管理面板 -->
+      <div class="w-[380px] bg-white border-l border-gray-200 flex flex-col overflow-hidden flex-shrink-0">
+        <!-- 添加模块 -->
+        <div class="p-4 border-b border-gray-100">
+          <p class="text-xs text-gray-400 mb-2">添加模块</p>
+          <div class="add-module-bar">
+            <button onclick="addModule('image')">🖼️ 图片</button>
+            <button onclick="addModule('text')">📝 文字</button>
+            <button onclick="addModule('button')">🔘 按钮</button>
+            <button onclick="addModule('divider')">➖ 分割线</button>
+            <button onclick="addModule('spacer')">↕️ 间距</button>
+          </div>
+        </div>
+
+        <!-- 模块列表 -->
+        <div class="flex-1 overflow-y-auto p-4" id="moduleList">
+          <p class="text-gray-400 text-sm text-center py-8">点击上方按钮添加模块</p>
+        </div>
+
+        <!-- 属性编辑 -->
+        <div class="border-t border-gray-200 p-4 hidden" id="propPanel">
+          <p class="text-xs text-gray-400 mb-2">模块属性</p>
+          <div class="prop-panel" id="propContent"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -99,13 +251,20 @@
   </div>
 
   <!-- Toast容器 -->
-  <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+  <div id="toastContainer" class="fixed top-4 right-4 z-[70] space-y-2"></div>
 
 <script>
 const API = '/admin/api/codes';
 let token = localStorage.getItem('liveqr_token') || '';
 
-// 初始化
+// 编辑器状态
+let currentMode = 'redirect';
+let landingConfig = { title: '', bgColor: '#ffffff', modules: [] };
+let editingModules = []; // 编辑中的模块副本
+let activeModuleIdx = -1;
+let tempLandingConfig = null; // 暂存配置（编辑时从服务端拿的）
+
+// ========== 初始化 ==========
 document.addEventListener('DOMContentLoaded', () => {
   if (token) {
     document.getElementById('loginPanel').classList.add('hidden');
@@ -114,35 +273,27 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('userInfo').classList.remove('hidden');
     loadCodes();
   }
-  // 显示baseUrl
   document.getElementById('baseUrl').textContent = `访问地址：${location.origin}/`;
 });
 
 // ========== 登录 ==========
-function showLogin() {
-  document.getElementById('passwordInput').focus();
-}
+function showLogin() { document.getElementById('passwordInput').focus(); }
 
 function doLogin() {
   const pwd = document.getElementById('passwordInput').value;
   if (!pwd) return;
-  // 验证密码（简单方式：用密码去请求一次API验证）
-  fetch('/admin/api/codes', {
-    headers: { 'Authorization': `Bearer ${pwd}` }
-  })
-  .then(r => {
-    if (r.ok) {
-      token = pwd;
-      localStorage.setItem('liveqr_token', pwd);
-      document.getElementById('loginPanel').classList.add('hidden');
-      document.getElementById('mainContent').classList.remove('hidden');
-      document.getElementById('loginBtn').classList.add('hidden');
-      document.getElementById('userInfo').classList.remove('hidden');
-      loadCodes();
-    } else {
-      toast('密码错误', 'error');
-    }
-  });
+  fetch('/admin/api/codes', { headers: { 'Authorization': `Bearer ${pwd}` } })
+    .then(r => {
+      if (r.ok) {
+        token = pwd;
+        localStorage.setItem('liveqr_token', pwd);
+        document.getElementById('loginPanel').classList.add('hidden');
+        document.getElementById('mainContent').classList.remove('hidden');
+        document.getElementById('loginBtn').classList.add('hidden');
+        document.getElementById('userInfo').classList.remove('hidden');
+        loadCodes();
+      } else { toast('密码错误', 'error'); }
+    });
 }
 
 function logout() {
@@ -162,37 +313,64 @@ function loadCodes() {
     .then(codes => {
       const list = document.getElementById('codeList');
       const empty = document.getElementById('emptyState');
-      if (codes.length === 0) {
-        list.innerHTML = '';
-        empty.classList.remove('hidden');
-        return;
-      }
+      if (codes.length === 0) { list.innerHTML = ''; empty.classList.remove('hidden'); return; }
       empty.classList.add('hidden');
-      list.innerHTML = codes.map(c => `
-        <div class="bg-white rounded-xl shadow-sm p-5 fade-in hover:shadow-md transition">
-          <div class="flex items-start justify-between">
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2 mb-1">
-                <h3 class="font-semibold text-gray-800 truncate">${esc(c.name)}</h3>
-                <span class="text-xs bg-red-50 text-red-500 px-2 py-0.5 rounded-full">${c.scan_count} 次扫码</span>
+      list.innerHTML = codes.map(c => {
+        const isLanding = c.mode === 'landing';
+        const modeTag = isLanding
+          ? '<span class="text-xs bg-purple-50 text-purple-500 px-2 py-0.5 rounded-full">H5页面</span>'
+          : '<span class="text-xs bg-blue-50 text-blue-500 px-2 py-0.5 rounded-full">直接跳转</span>';
+        const urlDisplay = isLanding
+          ? '<p class="text-sm text-purple-500 truncate">H5营销落地页</p>'
+          : `<p class="text-sm text-blue-500 truncate">${esc(c.url || '')}</p>`;
+        const moduleCount = (c.landing_config && c.landing_config.modules) ? c.landing_config.modules.length : 0;
+        const moduleInfo = isLanding ? `<p class="text-xs text-gray-300">${moduleCount} 个模块</p>` : '';
+        return `
+          <div class="bg-white rounded-xl shadow-sm p-5 fade-in hover:shadow-md transition">
+            <div class="flex items-start justify-between">
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-1">
+                  <h3 class="font-semibold text-gray-800 truncate">${esc(c.name)}</h3>
+                  ${modeTag}
+                  <span class="text-xs bg-red-50 text-red-500 px-2 py-0.5 rounded-full">${c.scan_count} 次扫码</span>
+                </div>
+                <p class="text-sm text-gray-400 mb-1">短码：${esc(c.code)}</p>
+                ${urlDisplay}
+                ${moduleInfo}
+                <p class="text-xs text-gray-300 mt-1">${c.created_at}</p>
               </div>
-              <p class="text-sm text-gray-400 mb-1">短码：${esc(c.code)}</p>
-              <p class="text-sm text-blue-500 truncate">${esc(c.url)}</p>
-              <p class="text-xs text-gray-300 mt-1">${c.created_at}</p>
+              <div class="flex items-center gap-2 ml-4 flex-shrink-0">
+                <button onclick="showStats(${c.id}, '${esc(c.name)}')" class="px-3 py-1.5 text-xs border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 transition">统计</button>
+                <button onclick="downloadQR(${c.id}, '${esc(c.code)}')" class="px-3 py-1.5 text-xs border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 transition">下载码</button>
+                <button onclick="showEditModal(${c.id})" class="px-3 py-1.5 text-xs border border-blue-200 rounded-lg text-blue-500 hover:bg-blue-50 transition">编辑</button>
+                <button onclick="doDelete(${c.id}, '${esc(c.name)}')" class="px-3 py-1.5 text-xs border border-red-200 rounded-lg text-red-400 hover:bg-red-50 transition">删除</button>
+              </div>
             </div>
-            <div class="flex items-center gap-2 ml-4">
-              <button onclick="showStats(${c.id}, '${esc(c.name)}')" class="px-3 py-1.5 text-xs border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 transition">统计</button>
-              <button onclick="downloadQR(${c.id}, '${esc(c.code)}')" class="px-3 py-1.5 text-xs border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50 transition">下载码</button>
-              <button onclick="showEditModal(${c.id}, '${esc(c.name)}', '${esc(c.url)}')" class="px-3 py-1.5 text-xs border border-blue-200 rounded-lg text-blue-500 hover:bg-blue-50 transition">编辑</button>
-              <button onclick="doDelete(${c.id}, '${esc(c.name)}')" class="px-3 py-1.5 text-xs border border-red-200 rounded-lg text-red-400 hover:bg-red-50 transition">删除</button>
-            </div>
-          </div>
-        </div>
-      `).join('');
+          </div>`;
+      }).join('');
     })
-    .catch(e => {
-      if (e.status === 401) logout();
-    });
+    .catch(e => { if (e.status === 401) logout(); });
+}
+
+// ========== 模式切换 ==========
+function setMode(mode) {
+  currentMode = mode;
+  const redirBtn = document.getElementById('modeRedirect');
+  const landBtn = document.getElementById('modeLanding');
+  const redirSec = document.getElementById('redirectSection');
+  const landSec = document.getElementById('landingSection');
+
+  if (mode === 'redirect') {
+    redirBtn.className = 'flex-1 py-2.5 border-2 border-red-500 bg-red-50 text-red-500 rounded-lg text-sm font-medium transition';
+    landBtn.className = 'flex-1 py-2.5 border-2 border-gray-200 text-gray-500 rounded-lg text-sm font-medium transition';
+    redirSec.classList.remove('hidden');
+    landSec.classList.add('hidden');
+  } else {
+    landBtn.className = 'flex-1 py-2.5 border-2 border-purple-500 bg-purple-50 text-purple-500 rounded-lg text-sm font-medium transition';
+    redirBtn.className = 'flex-1 py-2.5 border-2 border-gray-200 text-gray-500 rounded-lg text-sm font-medium transition';
+    redirSec.classList.add('hidden');
+    landSec.classList.remove('hidden');
+  }
 }
 
 // ========== CRUD ==========
@@ -203,17 +381,49 @@ function showCreateModal() {
   document.getElementById('inputCode').value = '';
   document.getElementById('inputUrl').value = '';
   document.getElementById('codeField').classList.remove('hidden');
+  setMode('redirect');
+  landingConfig = { title: '', bgColor: '#ffffff', modules: [] };
+  tempLandingConfig = null;
+  updateLandingHint();
   document.getElementById('modal').classList.remove('hidden');
 }
 
-function showEditModal(id, name, url) {
-  document.getElementById('modalTitle').textContent = '编辑活码';
-  document.getElementById('editId').value = id;
-  document.getElementById('inputName').value = name;
-  document.getElementById('inputCode').value = '';
-  document.getElementById('inputUrl').value = url;
-  document.getElementById('codeField').classList.add('hidden');
-  document.getElementById('modal').classList.remove('hidden');
+function showEditModal(id) {
+  // 获取完整数据来编辑
+  fetch(`${API}/${id}`, { headers: auth() })
+    .then(r => r.json())
+    .then(codes => {
+      // getCodeById 可能不存在，用列表方式
+    })
+    .catch(() => {});
+
+  // 从列表里找（简化方式）
+  fetch(API, { headers: auth() })
+    .then(r => r.json())
+    .then(codes => {
+      const c = codes.find(x => x.id === id);
+      if (!c) return;
+
+      document.getElementById('modalTitle').textContent = '编辑活码';
+      document.getElementById('editId').value = id;
+      document.getElementById('inputName').value = c.name;
+      document.getElementById('inputCode').value = '';
+      document.getElementById('inputUrl').value = c.url || '';
+      document.getElementById('codeField').classList.add('hidden');
+
+      const mode = c.mode || 'redirect';
+      setMode(mode);
+      landingConfig = c.landing_config ? JSON.parse(JSON.stringify(c.landing_config)) : { title: '', bgColor: '#ffffff', modules: [] };
+      tempLandingConfig = c.landing_config ? JSON.parse(JSON.stringify(c.landing_config)) : null;
+      updateLandingHint();
+      document.getElementById('modal').classList.remove('hidden');
+    });
+}
+
+function updateLandingHint() {
+  const hint = document.getElementById('landingHint');
+  const modCount = landingConfig.modules ? landingConfig.modules.length : 0;
+  hint.textContent = modCount > 0 ? `已配置 ${modCount} 个模块` : '尚未编辑页面内容';
 }
 
 function closeModal() {
@@ -225,10 +435,17 @@ function saveCode() {
   const name = document.getElementById('inputName').value.trim();
   const code = document.getElementById('inputCode').value.trim();
   const url = document.getElementById('inputUrl').value.trim();
-  if (!name || !url) { toast('请填写名称和URL', 'error'); return; }
+
+  if (!name) { toast('请填写名称', 'error'); return; }
+  if (currentMode === 'redirect' && !url) { toast('请填写跳转URL', 'error'); return; }
 
   const isEdit = !!id;
-  const body = { name, url };
+  const body = {
+    name,
+    url: currentMode === 'redirect' ? url : '',
+    mode: currentMode,
+    landing_config: currentMode === 'landing' ? landingConfig : null
+  };
   if (!isEdit && code) body.code = code;
 
   const opts = {
@@ -260,17 +477,13 @@ function downloadQR(id, code) {
     .then(blob => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
-      a.download = `${code}.png`;
-      a.click();
+      a.href = url; a.download = `${code}.png`; a.click();
       URL.revokeObjectURL(url);
       toast('二维码已下载');
     });
 }
 
 // ========== 统计 ==========
-let chartInstance = null;
-
 function showStats(id, name) {
   document.getElementById('statsTitle').textContent = `${name} - 扫码统计`;
   document.getElementById('statsContent').innerHTML = '<p class="text-gray-400 text-center py-8">加载中...</p>';
@@ -301,62 +514,348 @@ function showStats(id, name) {
         <div>
           <h4 class="text-sm font-medium text-gray-600 mb-3">来源分布</h4>
           <canvas id="sourceChart" height="160"></canvas>
-        </div>
-      `;
+        </div>`;
 
-      // 趋势图
       const ctx1 = document.getElementById('trendChart').getContext('2d');
       new Chart(ctx1, {
         type: 'line',
         data: {
           labels: stats.daily.map(d => d.date.slice(5)),
-          datasets: [{
-            label: '扫码次数',
-            data: stats.daily.map(d => d.count),
-            borderColor: '#ef4444',
-            backgroundColor: 'rgba(239,68,68,0.1)',
-            fill: true,
-            tension: 0.3
-          }]
+          datasets: [{ label: '扫码次数', data: stats.daily.map(d => d.count), borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)', fill: true, tension: 0.3 }]
         },
-        options: {
-          responsive: true,
-          plugins: { legend: { display: false } },
-          scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
-        }
+        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
       });
 
-      // 来源饼图
       if (sourceValues.length > 0) {
         const ctx2 = document.getElementById('sourceChart').getContext('2d');
         new Chart(ctx2, {
           type: 'doughnut',
-          data: {
-            labels: sourceLabels,
-            datasets: [{
-              data: sourceValues,
-              backgroundColor: ['#ef4444', '#3b82f6', '#f59e0b', '#10b981', '#8b5cf6', '#6b7280']
-            }]
-          },
+          data: { labels: sourceLabels, datasets: [{ data: sourceValues, backgroundColor: ['#ef4444', '#3b82f6', '#f59e0b', '#10b981', '#8b5cf6', '#6b7280'] }] },
           options: { responsive: true }
         });
       }
     });
 }
 
-function closeStats() {
-  document.getElementById('statsModal').classList.add('hidden');
+function closeStats() { document.getElementById('statsModal').classList.add('hidden'); }
+
+// ========== H5 页面编辑器 ==========
+
+function openLandingEditor() {
+  editingModules = JSON.parse(JSON.stringify(landingConfig.modules || []));
+  activeModuleIdx = -1;
+  document.getElementById('landingEditor').classList.remove('hidden');
+  renderModuleList();
+  renderPhonePreview();
+}
+
+function cancelLandingEditor() {
+  document.getElementById('landingEditor').classList.add('hidden');
+}
+
+function saveLandingConfig() {
+  landingConfig.modules = JSON.parse(JSON.stringify(editingModules));
+  updateLandingHint();
+  document.getElementById('landingEditor').classList.add('hidden');
+  toast('H5页面配置已保存');
+}
+
+function previewLanding() {
+  // 临时保存配置，在新窗口预览
+  const config = { ...landingConfig, modules: editingModules };
+  // 用服务端API不太方便，直接在phone frame里已经可以预览了
+  toast('手机框内即为实时预览效果');
+}
+
+// --- 模块操作 ---
+function genId() { return 'm' + Date.now() + Math.random().toString(36).slice(2, 6); }
+
+function addModule(type) {
+  let mod;
+  switch(type) {
+    case 'image':
+      mod = { id: genId(), type: 'image', src: '', link: '', borderRadius: 0 };
+      break;
+    case 'text':
+      mod = { id: genId(), type: 'text', content: '请输入文字', style: { fontSize: 16, color: '#333333', align: 'center', bold: false } };
+      break;
+    case 'button':
+      mod = { id: genId(), type: 'button', text: '立即购买', link: '', style: { bgColor: '#ef4444', color: '#ffffff', borderRadius: 8 } };
+      break;
+    case 'divider':
+      mod = { id: genId(), type: 'divider' };
+      break;
+    case 'spacer':
+      mod = { id: genId(), type: 'spacer', height: 20 };
+      break;
+  }
+  if (mod) {
+    editingModules.push(mod);
+    activeModuleIdx = editingModules.length - 1;
+    renderModuleList();
+    renderPhonePreview();
+    showPropPanel(activeModuleIdx);
+  }
+}
+
+function removeModule(idx) {
+  editingModules.splice(idx, 1);
+  if (activeModuleIdx >= editingModules.length) activeModuleIdx = editingModules.length - 1;
+  renderModuleList();
+  renderPhonePreview();
+  if (activeModuleIdx >= 0) showPropPanel(activeModuleIdx);
+  else hidePropPanel();
+}
+
+function moveModule(idx, dir) {
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= editingModules.length) return;
+  [editingModules[idx], editingModules[newIdx]] = [editingModules[newIdx], editingModules[idx]];
+  activeModuleIdx = newIdx;
+  renderModuleList();
+  renderPhonePreview();
+  showPropPanel(activeModuleIdx);
+}
+
+// --- 渲染模块列表 ---
+function renderModuleList() {
+  const container = document.getElementById('moduleList');
+  if (editingModules.length === 0) {
+    container.innerHTML = '<p class="text-gray-400 text-sm text-center py-8">点击上方按钮添加模块</p>';
+    return;
+  }
+  const typeNames = { image: '🖼️ 图片', text: '📝 文字', button: '🔘 按钮', divider: '➖ 分割线', spacer: '↕️ 间距' };
+  container.innerHTML = editingModules.map((mod, i) => {
+    const isActive = i === activeModuleIdx;
+    let desc = '';
+    if (mod.type === 'image') desc = mod.src ? mod.src.split('/').pop().slice(0, 20) : '未设置图片';
+    else if (mod.type === 'text') desc = (mod.content || '').slice(0, 20);
+    else if (mod.type === 'button') desc = mod.text || '按钮';
+    else if (mod.type === 'spacer') desc = `高度 ${mod.height || 20}px`;
+
+    return `
+      <div class="flex items-center gap-2 p-2 mb-1 rounded-lg cursor-pointer transition ${isActive ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-50 border border-transparent'}"
+           onclick="selectModule(${i})">
+        <span class="text-xs flex-1">
+          <span class="font-medium">${typeNames[mod.type] || mod.type}</span>
+          <span class="text-gray-400 ml-1">${esc(desc)}</span>
+        </span>
+        <div class="flex gap-1">
+          <button onclick="event.stopPropagation();moveModule(${i},-1)" class="w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-600 text-xs" title="上移">↑</button>
+          <button onclick="event.stopPropagation();moveModule(${i},1)" class="w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-600 text-xs" title="下移">↓</button>
+          <button onclick="event.stopPropagation();removeModule(${i})" class="w-6 h-6 flex items-center justify-center text-red-400 hover:text-red-600 text-xs" title="删除">✕</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function selectModule(idx) {
+  activeModuleIdx = idx;
+  renderModuleList();
+  renderPhonePreview();
+  showPropPanel(idx);
+}
+
+// --- 渲染手机预览 ---
+function renderPhonePreview() {
+  const phone = document.getElementById('phoneContent');
+  if (editingModules.length === 0) {
+    phone.innerHTML = '<div style="text-align:center;padding:60px 20px;color:#ccc;font-size:14px;">在右侧添加模块<br>预览效果实时显示</div>';
+    return;
+  }
+  phone.innerHTML = editingModules.map((mod, i) => {
+    const isActive = i === activeModuleIdx;
+    let inner = '';
+    switch(mod.type) {
+      case 'image':
+        if (mod.src) {
+          const img = `<img src="${escAttr(mod.src)}" style="${mod.borderRadius ? 'border-radius:'+mod.borderRadius+'px' : ''}">`;
+          inner = mod.link ? `<a href="${escAttr(mod.link)}" target="_blank" onclick="event.preventDefault()">${img}</a>` : img;
+        } else {
+          inner = '<div style="background:#f3f4f6;height:120px;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:13px;">点击设置图片</div>';
+        }
+        break;
+      case 'text':
+        const st = mod.style || {};
+        inner = `<div style="padding:12px 16px;font-size:${st.fontSize||16}px;color:${st.color||'#333'};text-align:${st.align||'center'};font-weight:${st.bold?'bold':'normal'};line-height:1.6;">${escHtml(mod.content||'')}</div>`;
+        break;
+      case 'button':
+        const bs = mod.style || {};
+        inner = `<div style="padding:12px 16px;"><a style="display:block;text-align:center;padding:12px 24px;border-radius:${bs.borderRadius||8}px;background:${bs.bgColor||'#ef4444'};color:${bs.color||'#fff'};font-size:16px;font-weight:600;text-decoration:none;">${escHtml(mod.text||'按钮')}</a></div>`;
+        break;
+      case 'divider':
+        inner = '<div style="height:1px;background:#eee;margin:0 16px;"></div>';
+        break;
+      case 'spacer':
+        inner = `<div style="height:${mod.height||20}px;background:repeating-linear-gradient(45deg,transparent,transparent 5px,#f9fafb 5px,#f9fafb 10px);"></div>`;
+        break;
+    }
+    const typeNames = { image: '图片', text: '文字', button: '按钮', divider: '分割线', spacer: '间距' };
+    return `<div class="ed-module ${isActive ? 'active' : ''}" onclick="selectModule(${i})">
+      <div class="mod-type-tag">${typeNames[mod.type]||mod.type}</div>
+      ${inner}</div>`;
+  }).join('');
+}
+
+// --- 属性面板 ---
+function showPropPanel(idx) {
+  const panel = document.getElementById('propPanel');
+  const content = document.getElementById('propContent');
+  const mod = editingModules[idx];
+  if (!mod) { hidePropPanel(); return; }
+
+  panel.classList.remove('hidden');
+  let html = '';
+
+  switch(mod.type) {
+    case 'image':
+      html = `
+        <label>图片</label>
+        <div class="flex gap-2">
+          <input id="propImgSrc" value="${escAttr(mod.src)}" placeholder="图片URL" oninput="updateMod('src', this.value)">
+          <button onclick="uploadImage()" class="px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg text-xs hover:bg-gray-200 transition flex-shrink-0">上传</button>
+        </div>
+        <input type="file" id="imgFileInput" accept="image/*" style="display:none" onchange="doUploadImage()">
+
+        <label>点击跳转链接</label>
+        <input value="${escAttr(mod.link)}" placeholder="可选，留空不可点击" oninput="updateMod('link', this.value)">
+
+        <label>圆角(px)</label>
+        <input type="number" value="${mod.borderRadius||0}" min="0" oninput="updateMod('borderRadius', parseInt(this.value)||0)">`;
+      break;
+
+    case 'text':
+      const st = mod.style || {};
+      html = `
+        <label>文字内容</label>
+        <textarea oninput="updateMod('content', this.value)">${escHtml(mod.content||'')}</textarea>
+
+        <div class="prop-row">
+          <div><label>字号(px)</label><input type="number" value="${st.fontSize||16}" min="10" max="60" oninput="updateStyle('fontSize', parseInt(this.value)||16)"></div>
+          <div><label>颜色</label><input type="color" value="${st.color||'#333333'}" oninput="updateStyle('color', this.value)"></div>
+        </div>
+
+        <label>对齐</label>
+        <select onchange="updateStyle('align', this.value)">
+          <option value="left" ${st.align==='left'?'selected':''}>左对齐</option>
+          <option value="center" ${st.align!=='left'&&st.align!=='right'?'selected':''}>居中</option>
+          <option value="right" ${st.align==='right'?'selected':''}>右对齐</option>
+        </select>
+
+        <label style="margin-top:8px;display:flex;align-items:center;gap:6px;">
+          <input type="checkbox" ${st.bold?'checked':''} onchange="updateStyle('bold', this.checked)">
+          <span style="margin:0;">加粗</span>
+        </label>`;
+      break;
+
+    case 'button':
+      const bs = mod.style || {};
+      html = `
+        <label>按钮文字</label>
+        <input value="${escAttr(mod.text)}" oninput="updateMod('text', this.value)">
+
+        <label>跳转链接</label>
+        <input value="${escAttr(mod.link)}" placeholder="点击后跳转的URL" oninput="updateMod('link', this.value)">
+
+        <div class="prop-row">
+          <div><label>按钮颜色</label><input type="color" value="${bs.bgColor||'#ef4444'}" oninput="updateBtnStyle('bgColor', this.value)"></div>
+          <div><label>文字颜色</label><input type="color" value="${bs.color||'#ffffff'}" oninput="updateBtnStyle('color', this.value)"></div>
+        </div>
+
+        <label>圆角(px)</label>
+        <input type="number" value="${bs.borderRadius||8}" min="0" oninput="updateBtnStyle('borderRadius', parseInt(this.value)||8)">`;
+      break;
+
+    case 'spacer':
+      html = `
+        <label>间距高度(px)</label>
+        <input type="number" value="${mod.height||20}" min="5" max="200" oninput="updateMod('height', parseInt(this.value)||20)">`;
+      break;
+
+    case 'divider':
+      html = '<p class="text-gray-400 text-sm">分割线无额外配置</p>';
+      break;
+  }
+
+  content.innerHTML = html;
+}
+
+function hidePropPanel() {
+  document.getElementById('propPanel').classList.add('hidden');
+}
+
+function updateMod(key, value) {
+  if (activeModuleIdx < 0 || !editingModules[activeModuleIdx]) return;
+  editingModules[activeModuleIdx][key] = value;
+  renderModuleList();
+  renderPhonePreview();
+}
+
+function updateStyle(key, value) {
+  if (activeModuleIdx < 0 || !editingModules[activeModuleIdx]) return;
+  if (!editingModules[activeModuleIdx].style) editingModules[activeModuleIdx].style = {};
+  editingModules[activeModuleIdx].style[key] = value;
+  renderPhonePreview();
+}
+
+function updateBtnStyle(key, value) {
+  updateStyle.call(null, key, value);
+}
+
+// --- 图片上传 ---
+function uploadImage() {
+  document.getElementById('imgFileInput').click();
+}
+
+function doUploadImage() {
+  const fileInput = document.getElementById('imgFileInput');
+  const file = fileInput.files[0];
+  if (!file) return;
+
+  const formData = new FormData();
+  formData.append('image', file);
+
+  fetch('/admin/api/upload', {
+    method: 'POST',
+    headers: auth(),
+    body: formData
+  })
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) { toast(data.error, 'error'); return; }
+      // 更新图片src
+      if (activeModuleIdx >= 0 && editingModules[activeModuleIdx]) {
+        editingModules[activeModuleIdx].src = data.url;
+        renderModuleList();
+        renderPhonePreview();
+        showPropPanel(activeModuleIdx);
+        toast('图片上传成功');
+      }
+    })
+    .catch(e => toast('上传失败', 'error'));
+
+  fileInput.value = '';
 }
 
 // ========== 工具函数 ==========
-function auth() {
-  return { 'Authorization': `Bearer ${token}` };
-}
+function auth() { return { 'Authorization': `Bearer ${token}` }; }
 
 function esc(s) {
   const d = document.createElement('div');
   d.textContent = s;
   return d.innerHTML.replace(/'/g, "\\'");
+}
+
+function escAttr(s) {
+  const d = document.createElement('div');
+  d.textContent = s || '';
+  return d.innerHTML;
+}
+
+function escHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s || '';
+  return d.innerHTML;
 }
 
 function toast(msg, type = 'success') {
