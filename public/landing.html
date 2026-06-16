@@ -119,6 +119,121 @@
       text-align: center;
     }
 
+    /* ====== 抖音口令弹窗（与淘口令一致结构，配色改黑红） ====== */
+    #douyin-modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      z-index: 10000;
+      color: #fff;
+    }
+    #douyin-modal .douyin-backdrop {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.6);
+    }
+    #douyin-modal .douyin-card {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #fff;
+      color: #333;
+      border-radius: 16px 16px 0 0;
+      padding: 24px 20px 32px;
+      max-width: 750px;
+      margin: 0 auto;
+      animation: slideUp 0.3s ease;
+    }
+    #douyin-modal .douyin-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    #douyin-modal .douyin-card-header h3 {
+      font-size: 17px;
+      font-weight: 600;
+      color: #333;
+    }
+    #douyin-modal .douyin-close {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #f0f0f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      color: #999;
+      cursor: pointer;
+      border: none;
+    }
+    #douyin-modal .douyin-tip {
+      font-size: 13px;
+      color: #999;
+      margin-bottom: 16px;
+      text-align: left;
+    }
+    #douyin-modal .douyin-code-box {
+      background: #f8f8f8;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 20px;
+      text-align: left;
+    }
+    #douyin-modal .douyin-code-text {
+      font-size: 15px;
+      color: #333;
+      line-height: 1.7;
+      word-break: break-all;
+      user-select: all;
+      -webkit-user-select: all;
+    }
+    #douyin-modal .douyin-copy-btn {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      background: #000000;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      transition: background 0.2s;
+    }
+    #douyin-modal .douyin-copy-btn:active { background: #222222; }
+    #douyin-modal .douyin-copy-btn.copied {
+      background: #07c160;
+    }
+    #douyin-modal .douyin-steps {
+      margin-top: 16px;
+      padding: 12px 16px;
+      background: #FFF0F0;
+      border-radius: 8px;
+      text-align: left;
+    }
+    #douyin-modal .douyin-steps p {
+      font-size: 13px;
+      color: #E02020;
+      line-height: 1.8;
+    }
+    #douyin-modal .douyin-steps span.num {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      line-height: 18px;
+      text-align: center;
+      background: #E02020;
+      color: #fff;
+      border-radius: 50%;
+      font-size: 11px;
+      margin-right: 6px;
+      font-weight: 600;
+    }
+
     /* ====== 淘口令弹窗 ====== */
     #tao-modal {
       display: none;
@@ -327,6 +442,27 @@
   <!-- H5 内容 -->
   <div id="page-content"></div>
 
+  <!-- 抖音口令弹窗 -->
+  <div id="douyin-modal">
+    <div class="douyin-backdrop" onclick="closeDouyinModal()"></div>
+    <div class="douyin-card">
+      <div class="douyin-card-header">
+        <h3>复制抖音口令购买</h3>
+        <button class="douyin-close" onclick="closeDouyinModal()">✕</button>
+      </div>
+      <p class="douyin-tip">长按或点击下方按钮复制完整内容，打开抖音自动弹出商品</p>
+      <div class="douyin-code-box">
+        <div class="douyin-code-text" id="douyinCodeText"></div>
+      </div>
+      <button class="douyin-copy-btn" id="douyinCopyBtn" onclick="copyDouyinCode()">复制抖音口令</button>
+      <div class="douyin-steps">
+        <p><span class="num">1</span>点击上方按钮复制抖音口令</p>
+        <p><span class="num">2</span>打开手机抖音 APP</p>
+        <p><span class="num">3</span>自动弹出商品页面，直接下单</p>
+      </div>
+    </div>
+  </div>
+
   <!-- 淘口令弹窗 -->
   <div id="tao-modal">
     <div class="tao-backdrop" onclick="closeTaoModal()"></div>
@@ -379,9 +515,14 @@
     // 京东域名（在微信内可直接跳转，不拦截）
     var jdDomains = ['jd.com', '3.cn', 'm.jd.com'];
 
+    // 抖音域名（走抖音口令流程）
+    var douyinDomains = [
+      'douyin.com', 'tiktok.com',
+      'v.douyin.com', 'www.douyin.com'
+    ];
+
     // 其他被屏蔽域名（走浏览器引导流程）
     var otherBlockedDomains = [
-      'douyin.com', 'tiktok.com',
       'pinduoduo.com', 'yangkeduo.com'
     ];
 
@@ -392,10 +533,12 @@
       } catch(e) {
         var lower = url.toLowerCase();
         if (taobaoDomains.some(function(d) { return lower.indexOf(d) > -1; })) return 'taobao';
+        if (douyinDomains.some(function(d) { return lower.indexOf(d) > -1; })) return 'douyin';
         if (otherBlockedDomains.some(function(d) { return lower.indexOf(d) > -1; })) return 'other';
         return null;
       }
       if (taobaoDomains.some(function(d) { return host === d || host.endsWith('.' + d); })) return 'taobao';
+      if (douyinDomains.some(function(d) { return host === d || host.endsWith('.' + d); })) return 'douyin';
       if (otherBlockedDomains.some(function(d) { return host === d || host.endsWith('.' + d); })) return 'other';
       return null;
     }
@@ -474,6 +617,66 @@
       document.body.removeChild(ta);
     }
 
+    // ========== 抖音口令弹窗 ==========
+    var currentDouyinLink = '';
+
+    function showDouyinModal(link, mod) {
+      currentDouyinLink = link || '';
+      var modal = document.getElementById('douyin-modal');
+      var codeText = document.getElementById('douyinCodeText');
+      var copyBtn = document.getElementById('douyinCopyBtn');
+
+      // 优先使用模块配置的自定义抖音口令，否则自动生成
+      var douyinCode = '';
+      if (mod && mod.douyinCode) {
+        douyinCode = mod.douyinCode;
+      } else {
+        douyinCode = generateDouyinCode(link, mod ? mod.name : '');
+      }
+      codeText.textContent = douyinCode;
+
+      copyBtn.textContent = '复制抖音口令';
+      copyBtn.className = 'douyin-copy-btn';
+
+      modal.style.display = 'block';
+    }
+
+    function closeDouyinModal() {
+      document.getElementById('douyin-modal').style.display = 'none';
+    }
+
+    function generateDouyinCode(link, moduleName) {
+      var name = (moduleName || '康比特好物').replace(/<[^>]+>/g, '');
+      return '7:/ 复制打开抖音，看看【' + name + '】\n' + link;
+    }
+
+    function copyDouyinCode() {
+      var codeText = document.getElementById('douyinCodeText').textContent;
+      var copyBtn = document.getElementById('douyinCopyBtn');
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(codeText).then(function() {
+          onDouyinCopySuccess(copyBtn);
+        }).catch(function() {
+          fallbackCopyText(codeText);
+          onDouyinCopySuccess(copyBtn);
+        });
+      } else {
+        fallbackCopyText(codeText);
+        onDouyinCopySuccess(copyBtn);
+      }
+    }
+
+    function onDouyinCopySuccess(btn) {
+      btn.textContent = '✓ 已复制，去抖音打开';
+      btn.className = 'douyin-copy-btn copied';
+      var codeText = document.getElementById('douyinCodeText');
+      var range = document.createRange();
+      range.selectNodeContents(codeText);
+      var sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+
     // ========== 浏览器引导遮罩 ==========
     var currentBlockedLink = '';
 
@@ -512,10 +715,11 @@
       var modEl = a.closest('[data-tao-code]');
       var mod = modEl ? {
         name: modEl.getAttribute('data-module-name') || '',
-        taoCode: modEl.getAttribute('data-tao-code') || ''
+        taoCode: modEl.getAttribute('data-tao-code') || '',
+        douyinCode: modEl.getAttribute('data-douyin-code') || ''
       } : null;
 
-      // href="#" 或空 → 说明是无链接但配了淘口令的图片/按钮
+      // href="#" 或空 → 说明是无链接但配了口令的图片/按钮
       var hasRealLink = href && href !== '#';
 
       // 微信内处理
@@ -528,6 +732,11 @@
             e.preventDefault();
             e.stopPropagation();
             showTaoModal(href, mod);
+            return;
+          } else if (linkType === 'douyin') {
+            e.preventDefault();
+            e.stopPropagation();
+            showDouyinModal(href, mod);
             return;
           } else if (linkType === 'other') {
             e.preventDefault();
@@ -544,6 +753,14 @@
           e.preventDefault();
           e.stopPropagation();
           showTaoModal('', mod);
+          return;
+        }
+
+        // 无真实链接但配置了抖音口令 → 弹抖音口令
+        if (mod && mod.douyinCode) {
+          e.preventDefault();
+          e.stopPropagation();
+          showDouyinModal('', mod);
           return;
         }
       }
@@ -613,13 +830,12 @@
       var style = s.join(';');
 
       var imgHtml = '<img src="' + escAttr(mod.src) + '" alt="" style="' + style + '" loading="lazy">';
-      var dataAttrs = 'data-module-name="' + escAttr(mod.name || '') + '" data-tao-code="' + escAttr(mod.taoCode || '') + '"';
+      var dataAttrs = 'data-module-name="' + escAttr(mod.name || '') + '" data-tao-code="' + escAttr(mod.taoCode || '') + '" data-douyin-code="' + escAttr(mod.douyinCode || '') + '"';
       if (mod.link) {
-        // 有链接：渲染成 <a> 标签
         return '<div class="mod-image" ' + dataAttrs + '><a href="' + escAttr(mod.link) + '" target="_blank" rel="noopener">' + imgHtml + '</a></div>';
       }
-      // 无链接但有淘口令：也渲染成可点击的 <a>，href 用 # 占位
-      if (mod.taoCode) {
+      // 无链接但有淘口令或抖音口令：也渲染成可点击的 <a>
+      if (mod.taoCode || mod.douyinCode) {
         return '<div class="mod-image" ' + dataAttrs + '><a href="#" onclick="return false;" style="display:block;cursor:pointer;">' + imgHtml + '</a></div>';
       }
       return '<div class="mod-image">' + imgHtml + '</div>';
@@ -648,7 +864,7 @@
       if (st.fontSize) css.push('font-size:' + st.fontSize + 'px');
       if (st.margin) css.push('margin:' + st.margin);
       var link = mod.link || '#';
-      var dataAttrs = 'data-module-name="' + escAttr(mod.name || mod.text || '') + '" data-tao-code="' + escAttr(mod.taoCode || '') + '"';
+      var dataAttrs = 'data-module-name="' + escAttr(mod.name || mod.text || '') + '" data-tao-code="' + escAttr(mod.taoCode || '') + '" data-douyin-code="' + escAttr(mod.douyinCode || '') + '"';
       return '<div class="mod-button" ' + dataAttrs + '><a href="' + escAttr(link) + '" style="' + css.join(';') + '" target="_blank" rel="noopener">' + escHtml(mod.text || '按钮') + '</a></div>';
     }
 

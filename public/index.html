@@ -652,13 +652,13 @@ function addModule(type) {
   let mod;
   switch(type) {
     case 'image':
-      mod = { id: genId(), type: 'image', name: '', src: '', link: '', taoCode: '', borderRadius: 0 };
+      mod = { id: genId(), type: 'image', name: '', src: '', link: '', taoCode: '', douyinCode: '', borderRadius: 0 };
       break;
     case 'text':
       mod = { id: genId(), type: 'text', content: '请输入文字', style: { fontSize: 16, color: '#333333', align: 'center', bold: false } };
       break;
     case 'button':
-      mod = { id: genId(), type: 'button', name: '', text: '立即购买', link: '', taoCode: '', style: { bgColor: '#ef4444', color: '#ffffff', borderRadius: 8 } };
+      mod = { id: genId(), type: 'button', name: '', text: '立即购买', link: '', taoCode: '', douyinCode: '', style: { bgColor: '#ef4444', color: '#ffffff', borderRadius: 8 } };
       break;
     case 'divider':
       mod = { id: genId(), type: 'divider' };
@@ -804,6 +804,9 @@ function showPropPanel(idx) {
         <label>自定义淘口令</label>
         <textarea placeholder="留空自动生成，格式如：￥商品名￥\n复制这条信息打开淘宝" oninput="updateMod('taoCode', this.value)">${escHtml(mod.taoCode||'')}</textarea>
 
+        <label>抖音口令</label>
+        <textarea placeholder="留空自动生成，格式如：7:/ 复制打开抖音，看看【商品名】" oninput="updateMod('douyinCode', this.value)">${escHtml(mod.douyinCode||'')}</textarea>
+
         <label>圆角(px)</label>
         <input type="number" value="${mod.borderRadius||0}" min="0" oninput="updateMod('borderRadius', parseInt(this.value)||0)">`;
       break;
@@ -846,6 +849,9 @@ function showPropPanel(idx) {
 
         <label>自定义淘口令</label>
         <textarea placeholder="留空自动生成" oninput="updateMod('taoCode', this.value)">${escHtml(mod.taoCode||'')}</textarea>
+
+        <label>抖音口令</label>
+        <textarea placeholder="留空自动生成，格式如：7:/ 复制打开抖音，看看【商品名】" oninput="updateMod('douyinCode', this.value)">${escHtml(mod.douyinCode||'')}</textarea>
 
         <div class="prop-row">
           <div><label>按钮颜色</label><input type="color" value="${bs.bgColor||'#ef4444'}" oninput="updateBtnStyle('bgColor', this.value)"></div>
